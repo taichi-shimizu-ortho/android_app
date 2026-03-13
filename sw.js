@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ihc-timer-v2';
+const CACHE_NAME = 'ihc-timer-v3';
 const CACHE_URLS = [
   '/android_app/',
   '/android_app/index.html',
