@@ -1,11 +1,11 @@
-const CACHE_NAME = 'ihc-timer-v1';
+const CACHE_NAME = 'ihc-timer-v2';
 const CACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/sw.js',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/android_app/',
+  '/android_app/index.html',
+  '/android_app/manifest.json',
+  '/android_app/sw.js',
+  '/android_app/icons/icon-192.png',
+  '/android_app/icons/icon-512.png'
 ];
 
 self.addEventListener('install', e => {

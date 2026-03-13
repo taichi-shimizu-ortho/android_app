@@ -2,7 +2,7 @@
   "name": "IHC 二重染色タイマー",
   "short_name": "IHC Timer",
   "description": "免疫組織化学 二重染色プロトコルタイマー",
-  "start_url": "/",
+  "start_url": "/android_app/",
   "display": "standalone",
   "background_color": "#f0f2f5",
   "theme_color": "#1a73e8",
