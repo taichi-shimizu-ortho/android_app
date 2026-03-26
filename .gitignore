@@ -12,5 +12,4 @@ wheels/
 # Claude Code
 .claude/
 
-# Prompter (private presentation)
-prompter/
+# Prompter (now public - published to GitHub Pages)
