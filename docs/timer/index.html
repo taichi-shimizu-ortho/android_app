@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a73e8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IHC Timer">
+    <title>IHC 二重染色</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #1a73e8; text-align: center; font-size: 1.2em; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; margin-top: 0; }
+
+        /* 日タブ */
+        .day-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
+        .day-tab { flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; font-size: 0.9em; font-weight: bold; cursor: pointer; transition: 0.2s; text-align: center; color: #666; }
+        .day-tab.active { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; }
+        .day-tab:hover:not(.active) { background: #f8f9fa; }
+
+        /* タイマー表示 */
+        .timer-card { background: #1a73e8; color: white; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 20px; position: sticky; top: 10px; z-index: 100; }
+        #timeLeft { font-size: 3.5em; font-weight: bold; font-family: monospace; }
+        #currentStepName { font-size: 1em; margin-top: 5px; opacity: 0.9; }
+
+        /* ボタン類 */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        button { border: none; border-radius: 8px; padding: 12px 24px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-start { background: #34a853; color: white; flex: 2; font-size: 1.1em; }
+        .btn-start:disabled { background: #a8dab5; }
+        .btn-skip { background: #fbbc05; color: white; flex: 1; }
+
+        /* ステップリスト */
+        .step-list { margin-top: 20px; }
+        .step-item { display: flex; align-items: flex-start; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9em; transition: 0.3s; cursor: pointer; }
+        .step-item:hover { background: #f8f9fa; }
+        .step-item.active { background: #e8f0fe; border-left: 6px solid #1a73e8; font-weight: bold; color: #1a73e8; }
+        .step-item.completed { color: #aaa; text-decoration: line-through; background: #fafafa; }
+        .step-num { width: 30px; font-weight: bold; flex-shrink: 0; padding-top: 1px; }
+        .note { color: #d93025; font-size: 0.8em; margin-top: 2px; }
+
+        /* 通知許可バナー */
+        #notifBanner { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 10px 14px; margin-bottom: 15px; font-size: 0.85em; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        #notifBanner button { background: #1a73e8; color: white; padding: 6px 14px; font-size: 0.85em; flex-shrink: 0; }
+        #notifBanner .close { background: none; color: #666; padding: 4px 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>IHC 二重染色</h2>
+
+    <div id="notifBanner" style="display:none">
+        <span>タイマー終了時に通知を受け取りますか？</span>
+        <div style="display:flex;gap:6px">
+            <button onclick="requestNotifPermission()">許可する</button>
+            <button class="close" onclick="document.getElementById('notifBanner').style.display='none'">✕</button>
+        </div>
+    </div>
+
+    <div class="day-tabs">
+        <div class="day-tab active" onclick="switchDay(0)">一日目</div>
+        <div class="day-tab" onclick="switchDay(1)">二日目</div>
+        <div class="day-tab" onclick="switchDay(2)">三日目</div>
+    </div>
+
+    <div class="timer-card">
+        <div id="timeLeft">00:00</div>
+        <div id="currentStepName">準備完了</div>
+        <div class="controls">
+            <button id="startBtn" class="btn-start" onclick="toggleTimer()">START</button>
+            <button class="btn-skip" onclick="nextStep()">NEXT</button>
+        </div>
+    </div>
+
+    <div id="stepList" class="step-list"></div>
+</div>
+
+<script>
+const protocols = [
+    // ── 一日目 ──────────────────────────────────────
+    [
+        { name: "脱パラ・DDW", time: 0 },
+        { name: "PBS洗浄", time: 10 * 60 },
+        { name: "マイクロウェーブ (クエン酸バッファー)", time: 15 * 60, note: "液量注意" },
+        { name: "冷却 (庫内)", time: 15 * 60 },
+        { name: "冷却 (庫外)", time: 15 * 60 },
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "一次抗体 RXFP1", time: 0, note: "1:500 Blocking Buffer希釈・4℃ overnight / negative controlはBufferのみ" }
+    ],
+
+    // ── 二日目 ──────────────────────────────────────
+    [
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "二次抗体 Poly HRP (Rabbit)", time: 30 * 60, note: "希釈不要・室温" },
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "チラミド増感 488", time: 10 * 60, note: "ワーキングソリューション・暗所・室温" },
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "ストリッピング (マイクロウェーブ)", time: 15 * 60, note: "クエン酸バッファー・液量注意" },
+        { name: "冷却 (庫内)", time: 15 * 60 },
+        { name: "冷却 (庫外)", time: 15 * 60 },
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "一次抗体 vimentin", time: 0, note: "1:500 Blocking Buffer希釈・4℃ overnight / negative controlはBufferのみ" }
+    ],
+
+    // ── 三日目 ──────────────────────────────────────
+    [
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "二次抗体 Poly HRP (Rabbit)", time: 30 * 60, note: "希釈不要・室温" },
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "チラミド増感 555", time: 10 * 60, note: "ワーキングソリューション・暗所・室温" },
+        ...Array(3).fill().map((_, i) => ({ name: `PBS洗浄 (${i+1}/3)`, time: 10 * 60 })),
+        { name: "封入", time: 0 }
+    ]
+];
+
+let currentDay = 0;
+let currentIdx = 0;
+let timerId = null;
+let remaining = 0;
+let paused = false;
+
+// ── Service Worker 登録 ────────────────────────────
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+}
+
+// ── 通知許可バナー ─────────────────────────────────
+window.addEventListener('load', () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+        document.getElementById('notifBanner').style.display = 'flex';
+    }
+});
+
+function requestNotifPermission() {
+    Notification.requestPermission().then(() => {
+        document.getElementById('notifBanner').style.display = 'none';
+    });
+}
+
+function showNotification(stepName) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('IHC タイマー完了', {
+            body: `「${stepName}」が終わりました`,
+            icon: '../shared/icons/icon-192.png'
+        });
+    }
+}
+
+// ── タブ切り替え ───────────────────────────────────
+function switchDay(day) {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    currentDay = day;
+    currentIdx = 0;
+    paused = false;
+    document.querySelectorAll('.day-tab').forEach((tab, i) => {
+        tab.className = 'day-tab' + (i === day ? ' active' : '');
+    });
+    setStartBtn('START');
+    renderStepList();
+    updateUI();
+}
+
+function setStartBtn(label) {
+    const btn = document.getElementById('startBtn');
+    btn.textContent = label;
+    btn.disabled = false;
+}
+
+function renderStepList() {
+    const list = document.getElementById('stepList');
+    list.innerHTML = '';
+    protocols[currentDay].forEach((s, i) => {
+        const div = document.createElement('div');
+        div.className = 'step-item';
+        div.id = `step-${i}`;
+        div.innerHTML = `
+            <div class="step-num">${i+1}</div>
+            <div>
+                <div>${s.name}${s.time > 0 ? ` [${s.time/60}分]` : ''}</div>
+                ${s.note ? `<div class="note">※ ${s.note}</div>` : ''}
+            </div>
+        `;
+        div.onclick = () => jumpToStep(i);
+        list.appendChild(div);
+    });
+}
+
+function jumpToStep(idx) {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    paused = false;
+    currentIdx = idx;
+    updateUI();
+    if (protocols[currentDay][currentIdx]?.time > 0) startTimer();
+}
+
+function updateUI() {
+    const protocol = protocols[currentDay];
+    if (currentIdx >= protocol.length) {
+        document.getElementById('currentStepName').innerText = "全工程完了！";
+        document.getElementById('timeLeft').innerText = "--:--";
+        protocol.forEach((_, i) => {
+            const el = document.getElementById(`step-${i}`);
+            if (el) el.className = 'step-item completed';
+        });
+        return;
+    }
+    protocol.forEach((_, i) => {
+        const el = document.getElementById(`step-${i}`);
+        if (el) el.className = 'step-item' + (i === currentIdx ? ' active' : (i < currentIdx ? ' completed' : ''));
+    });
+    const step = protocol[currentIdx];
+    document.getElementById('currentStepName').innerText = step.name;
+    if (!paused) {
+        remaining = step.time;
+        displayTime();
+        if (!timerId) setStartBtn('START');
+    }
+}
+
+function displayTime() {
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    document.getElementById('timeLeft').innerText =
+        `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function playNotification(stepName) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+    // 触覚フィードバック: 短・短・長
+    if (navigator.vibrate) navigator.vibrate([100, 80, 100, 80, 400]);
+    showNotification(stepName);
+}
+
+function toggleTimer() {
+    if (timerId) {
+        clearInterval(timerId);
+        timerId = null;
+        paused = true;
+        setStartBtn('RESUME');
+    } else {
+        startTimer();
+    }
+}
+
+function startTimer() {
+    if (timerId) clearInterval(timerId);
+    if (remaining <= 0) { nextStep(); return; }
+    paused = false;
+    setStartBtn('PAUSE');
+    const endTime = Date.now() + remaining * 1000;
+    timerId = setInterval(() => {
+        remaining = Math.ceil((endTime - Date.now()) / 1000);
+        if (remaining <= 0) {
+            remaining = 0;
+            displayTime();
+            clearInterval(timerId);
+            timerId = null;
+            paused = false;
+            const stepName = protocols[currentDay][currentIdx]?.name || '';
+            playNotification(stepName);
+            nextStep(true);
+        } else {
+            displayTime();
+        }
+    }, 200);
+}
+
+function nextStep(autoStart = false) {
+    clearInterval(timerId);
+    timerId = null;
+    paused = false;
+    currentIdx++;
+    updateUI();
+    const protocol = protocols[currentDay];
+    if (autoStart && currentIdx < protocol.length && protocol[currentIdx].time > 0) {
+        startTimer();
+    } else {
+        setStartBtn('START');
+    }
+}
+
+renderStepList();
+updateUI();
+</script>
+</body>
+</html>
