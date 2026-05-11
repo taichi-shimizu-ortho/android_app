@@ -4,8 +4,8 @@ const urlsToCache = [
   '/android_app/protocol/index.html',
   '/android_app/protocol/main.js',
   '/android_app/protocol/manifest.json',
-  '/android_app/shared/icons/icon-192x192.png',
-  '/android_app/shared/icons/icon-512x512.png'
+  '/android_app/protocol/icons/icon-192.png',
+  '/android_app/protocol/icons/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -35,6 +35,11 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // chrome-extension リクエストはスキップ
+  if (event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+
   // Supabaseへのリクエストはネットワーク優先
   if (event.request.url.includes('supabase')) {
     event.respondWith(
@@ -57,7 +62,7 @@ self.addEventListener('fetch', event => {
         }
         const responseToCache = response.clone();
         caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, responseToCache);
+          cache.put(event.request, responseToCache).catch(() => {});
         });
         return response;
       });
