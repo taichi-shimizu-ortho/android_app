@@ -273,10 +273,27 @@ function autoCellCount() {
   // 25万個に必要な体積(uL) = 250000 / (細胞数/mL) × 1000
   const volumeUl = (250000 / cellCountPerMl) * 1000;
 
+  // 100mm シャーレの密度計算
+  const dishArea = 78.5; // cm²
+  const cellDensity = cellCountPerMl / (dishArea * 1000); // cells/cm²
+
   // 表示
   document.getElementById('avg-value').textContent = avgValue.toFixed(1);
-  document.getElementById('cell-count-value').textContent = cellCountPerMlHundredThousand.toFixed(2);
-  document.getElementById('volume-value').textContent = volumeUl.toFixed(1);
+
+  // 平均値 < 2.5（25万個未満）の場合
+  if (avgValue < 2.5) {
+    const cellCount = cellCountPerMl / 1000; // 単位を千個に変換
+    document.getElementById('cell-count-value').innerHTML =
+      `${cellCount.toFixed(0)}k cells/mL<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensity.toFixed(0)} cells/cm²</span>`;
+    document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
+    document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
+    document.getElementById('volume-value').parentElement.style.color = '#e65100';
+  } else {
+    document.getElementById('cell-count-value').textContent = cellCountPerMlHundredThousand.toFixed(2);
+    document.getElementById('volume-value').textContent = volumeUl.toFixed(1);
+    document.getElementById('volume-value').parentElement.style.backgroundColor = '#fff9c4';
+    document.getElementById('volume-value').parentElement.style.color = '#f57f17';
+  }
   document.getElementById('result-display').style.display = 'block';
 
   // グローバル変数に保存（保存時に使用）
