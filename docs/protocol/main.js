@@ -282,20 +282,19 @@ function autoCellCount() {
   // 表示（有効数字3桁）
   document.getElementById('avg-value').textContent = avgValue.toFixed(2);
 
+  // すべてのケースで密度を表示
+  document.getElementById('cell-count-display').innerHTML =
+    `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
+  document.getElementById('cell-density-display').innerHTML =
+    `密度: ${cellDensityRounded} cells/cm²`;
+  document.getElementById('cell-density-display').style.display = 'block';
+
   // 平均値 < 2.5（25万個未満）の場合
   if (avgValue < 2.5) {
-    document.getElementById('cell-count-display').innerHTML =
-      `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
-    document.getElementById('cell-density-display').innerHTML =
-      `密度: ${cellDensityRounded} cells/cm²`;
-    document.getElementById('cell-density-display').style.display = 'block';
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
     document.getElementById('volume-value').parentElement.style.color = '#e65100';
   } else {
-    document.getElementById('cell-count-display').innerHTML =
-      `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
-    document.getElementById('cell-density-display').style.display = 'none';
     document.getElementById('volume-value').textContent = volumeUl.toFixed(1);
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#fff9c4';
     document.getElementById('volume-value').parentElement.style.color = '#f57f17';
