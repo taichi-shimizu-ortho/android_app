@@ -76,11 +76,11 @@ function displaySection() {
       <h3>細胞数計算機</h3>
       <div class="calculator-form">
         <div class="form-group">
-          <label>計測1（計数値）</label>
+          <label>計測1（×10<sup>5</sup>）</label>
           <input type="number" id="counted-value-1" placeholder="例: 120" step="0.1" onchange="autoCellCount()" oninput="autoCellCount()">
         </div>
         <div class="form-group">
-          <label>計測2（計数値）</label>
+          <label>計測2（×10<sup>5</sup>）</label>
           <input type="number" id="counted-value-2" placeholder="例: 110" step="0.1" onchange="autoCellCount()" oninput="autoCellCount()">
         </div>
         <div id="result-display" class="result-display" style="display:none;">
@@ -284,7 +284,7 @@ function autoCellCount() {
   if (avgValue < 2.5) {
     const cellDensityDisplay = Math.floor(cellDensityPerCm2); // 小数点切り捨て
     document.getElementById('cell-count-value').innerHTML =
-      `${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells/mL<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensityDisplay} cells/cm²</span>`;
+      `${cellCountPerMlHundredThousand.toFixed(1)}<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensityDisplay} cells/cm²</span>`;
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
     document.getElementById('volume-value').parentElement.style.color = '#e65100';
