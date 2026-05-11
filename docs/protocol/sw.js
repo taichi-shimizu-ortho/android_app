@@ -60,10 +60,12 @@ self.addEventListener('fetch', event => {
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, responseToCache).catch(() => {});
-        });
+        if (event.request.method === 'GET' && !event.request.url.includes('chrome-extension')) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache).catch(() => {});
+          });
+        }
         return response;
       });
     }).catch(() => {

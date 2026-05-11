@@ -1,9 +1,6 @@
 // Supabase初期化
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
 const SUPABASE_URL = 'https://zfuklmuilcejinkzfimq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_yB7PtClaSDoX7S074E1wLA_KoEpg5uN';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let protocols = [];
 let currentStep = 0;
@@ -11,20 +8,30 @@ let timerInterval = null;
 let timerSeconds = 0;
 
 async function loadProtocols() {
-  const { data, error } = await supabase
-    .from('protocols')
-    .select('*')
-    .order('section_number', { ascending: true })
-    .order('step_number', { ascending: true });
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/protocols?select=*&order=section_number.asc,step_number.asc`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
-  if (error) {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    protocols = await response.json();
+    currentStep = 0;
+    displayStep();
+  } catch (error) {
     console.error('Error loading protocols:', error);
-    return;
+    document.getElementById('step-container').innerHTML =
+      `<p style="color: red;">エラー: ${error.message}<br/>コンソールを確認してください</p>`;
   }
-
-  protocols = data;
-  currentStep = 0;
-  displayStep();
 }
 
 function displayStep() {
@@ -166,7 +173,9 @@ function playNotification() {
 
 // Service Worker登録
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/android_app/protocol/sw.js');
+  navigator.serviceWorker.register('/android_app/protocol/sw.js').catch(err => {
+    console.warn('Service Worker registration failed:', err);
+  });
 }
 
 // 初期化
