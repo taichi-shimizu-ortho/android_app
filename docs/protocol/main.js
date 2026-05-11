@@ -324,6 +324,9 @@ async function saveCellCount() {
   const cellCountPerMl = avgValue * 100000;
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000;
   const volumeUl = (250000 / cellCountPerMl) * 1000;
+  const dishArea = 78.5; // cm²
+  const cellDensityPerCm2 = cellCountPerMl / dishArea;
+  const cellDensityDisplay = Math.floor(cellDensityPerCm2);
   const notesInput = document.getElementById('notes-input').value || '';
 
   try {
@@ -341,6 +344,7 @@ async function saveCellCount() {
           count_2: value2,
           counted_value_mean: avgValue,
           cell_count: cellCountPerMlHundredThousand,
+          density: cellDensityDisplay,
           notes: notesInput
         })
       }
