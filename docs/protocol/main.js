@@ -171,6 +171,13 @@ function playNotification() {
   oscillator.stop(audioContext.currentTime + 0.5);
 }
 
+// グローバルスコープに登録（HTMLのonclick用）
+window.nextStep = nextStep;
+window.previousStep = previousStep;
+window.startTimer = startTimer;
+window.pauseTimer = pauseTimer;
+window.resetTimer = resetTimer;
+
 // Service Worker登録
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/android_app/protocol/sw.js').catch(err => {
