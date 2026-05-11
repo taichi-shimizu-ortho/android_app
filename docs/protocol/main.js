@@ -237,8 +237,8 @@ function autoCellCount() {
   // 平均計数値
   const avgValue = (value1 + value2) / 2;
 
-  // 希釈倍率=2（固定）、計算式: 平均 × 2 × 10^5 = 細胞数/mL
-  const cellCountPerMl = avgValue * 2 * 100000;
+  // 計算式: 平均 × 10^5 = 細胞数/mL
+  const cellCountPerMl = avgValue * 100000;
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000; // × 10^5 単位に変換
 
   // 25万個に必要な体積(uL) = 250000 / (細胞数/mL) × 1000
@@ -277,7 +277,7 @@ async function saveCellCount() {
         body: JSON.stringify({
           cell_count: window.currentCellCount,
           counted_value: window.currentAvgValue,
-          dilution_ratio: 2,
+          dilution_ratio: 1,
           notes: `計測1: ${window.currentCountedValue1}, 計測2: ${window.currentCountedValue2}, 必要体積: ${window.currentVolumeUl.toFixed(1)} uL`
         })
       }
