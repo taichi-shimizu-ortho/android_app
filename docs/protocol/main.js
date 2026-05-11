@@ -277,17 +277,17 @@ function autoCellCount() {
   // 100mm シャーレの密度計算
   const dishArea = 78.5; // cm²
   const cellDensityPerCm2 = cellCountPerMl / dishArea; // cells/cm²
+  const cellDensityRounded = Math.round(cellDensityPerCm2); // 四捨五入
 
   // 表示（有効数字3桁）
   document.getElementById('avg-value').textContent = avgValue.toFixed(2);
 
   // 平均値 < 2.5（25万個未満）の場合
   if (avgValue < 2.5) {
-    const cellDensityDisplay = Math.floor(cellDensityPerCm2); // 小数点切り捨て
     document.getElementById('cell-count-display').innerHTML =
       `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
     document.getElementById('cell-density-display').innerHTML =
-      `密度: ${cellDensityDisplay} cells/cm²`;
+      `密度: ${cellDensityRounded} cells/cm²`;
     document.getElementById('cell-density-display').style.display = 'block';
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
@@ -326,7 +326,7 @@ async function saveCellCount() {
   const volumeUl = (250000 / cellCountPerMl) * 1000;
   const dishArea = 78.5; // cm²
   const cellDensityPerCm2 = cellCountPerMl / dishArea;
-  const cellDensityDisplay = Math.floor(cellDensityPerCm2);
+  const cellDensityDisplay = Math.round(cellDensityPerCm2);
   const notesInput = document.getElementById('notes-input').value || '';
 
   try {
