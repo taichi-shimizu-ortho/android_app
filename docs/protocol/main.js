@@ -69,6 +69,31 @@ function displaySection() {
     </div>
   `).join('');
 
+  // セクション6（細胞数カウント）に計算機を追加
+  const calculatorHtml = section.section_number === 6 ? `
+    <div class="calculator-section">
+      <h3>細胞数計算機</h3>
+      <div class="calculator-form">
+        <div class="form-group">
+          <label>計数値</label>
+          <input type="number" id="counted-value" placeholder="例: 120" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>希釈倍率</label>
+          <input type="number" id="dilution-ratio" placeholder="例: 2" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>計算式: 計数値 × 希釈倍率 × 10^4</label>
+          <button onclick="calculateCellCount()" class="calculate-btn">計算</button>
+        </div>
+        <div id="result-display" class="result-display" style="display:none;">
+          <p>細胞数: <span id="result-value"></span> × 10<sup>5</sup> cells/mL</p>
+          <button onclick="saveCellCount()" class="save-btn">ログに保存</button>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
   container.innerHTML = `
     <div class="section-header">
       <h1>セクション ${section.section_number}: ${section.section_title}</h1>
@@ -77,6 +102,8 @@ function displaySection() {
     <div class="steps-list">
       ${stepsHtml}
     </div>
+
+    ${calculatorHtml}
 
     <div class="timer-section" ${totalDuration ? '' : 'style="display:none;"'}>
       <p class="timer-label">セクション作業時間</p>
@@ -199,12 +226,76 @@ function playNotification() {
   oscillator.stop(audioContext.currentTime + 0.5);
 }
 
+function calculateCellCount() {
+  const countedValue = parseFloat(document.getElementById('counted-value').value);
+  const dilutionRatio = parseFloat(document.getElementById('dilution-ratio').value);
+
+  if (!countedValue || !dilutionRatio || countedValue <= 0 || dilutionRatio <= 0) {
+    alert('計数値と希釈倍率を正しく入力してください');
+    return;
+  }
+
+  // 計算: 計数値 × 希釈倍率 × 10^4
+  const cellCount = (countedValue * dilutionRatio * 10000) / 100000; // ÷10^5 で10^5単位に変換
+
+  document.getElementById('result-value').textContent = cellCount.toFixed(2);
+  document.getElementById('result-display').style.display = 'block';
+
+  // グローバル変数に保存（保存時に使用）
+  window.currentCellCount = cellCount;
+  window.currentCountedValue = countedValue;
+  window.currentDilutionRatio = dilutionRatio;
+}
+
+async function saveCellCount() {
+  if (!window.currentCellCount) {
+    alert('先に計算を実行してください');
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/experiment_logs`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cell_count: window.currentCellCount,
+          counted_value: window.currentCountedValue,
+          dilution_ratio: window.currentDilutionRatio
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    alert(`ログを保存しました: ${window.currentCellCount.toFixed(2)} × 10^5 cells/mL`);
+
+    // フォームをリセット
+    document.getElementById('counted-value').value = '';
+    document.getElementById('dilution-ratio').value = '';
+    document.getElementById('result-display').style.display = 'none';
+    window.currentCellCount = null;
+  } catch (error) {
+    console.error('Error saving cell count:', error);
+    alert('ログ保存に失敗しました');
+  }
+}
+
 // グローバルスコープに登録（HTMLのonclick用）
 window.nextSection = nextSection;
 window.previousSection = previousSection;
 window.startTimer = startTimer;
 window.pauseTimer = pauseTimer;
 window.resetTimer = resetTimer;
+window.calculateCellCount = calculateCellCount;
+window.saveCellCount = saveCellCount;
 
 // Service Worker登録
 if ('serviceWorker' in navigator) {
