@@ -87,6 +87,10 @@ function displaySection() {
           <p>平均計数値: <span id="avg-value"></span></p>
           <p>細胞数: <span id="cell-count-value"></span> × 10<sup>5</sup> cells/mL</p>
           <p class="volume-result">播種に必要な体積: <span id="volume-value"></span> μL</p>
+          <div class="form-group">
+            <label>メモ（任意）</label>
+            <textarea id="notes-input" placeholder="実験の備考などを入力" rows="2"></textarea>
+          </div>
           <button onclick="saveCellCount()" class="save-btn">ログに保存</button>
         </div>
       </div>
@@ -297,6 +301,7 @@ async function saveCellCount() {
   const cellCountPerMl = avgValue * 100000;
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000;
   const volumeUl = (250000 / cellCountPerMl) * 1000;
+  const notesInput = document.getElementById('notes-input').value || '';
 
   try {
     const response = await fetch(
@@ -309,10 +314,11 @@ async function saveCellCount() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          count_1: value1,
+          count_2: value2,
+          counted_value_mean: avgValue,
           cell_count: cellCountPerMlHundredThousand,
-          counted_value: avgValue,
-          dilution_ratio: 1,
-          notes: `計測1: ${value1}, 計測2: ${value2}, 必要体積: ${volumeUl.toFixed(1)} uL`
+          notes: notesInput
         })
       }
     );
@@ -326,6 +332,7 @@ async function saveCellCount() {
     // フォームをリセット
     document.getElementById('counted-value-1').value = '';
     document.getElementById('counted-value-2').value = '';
+    document.getElementById('notes-input').value = '';
     document.getElementById('result-display').style.display = 'none';
     window.currentCellCount = null;
   } catch (error) {

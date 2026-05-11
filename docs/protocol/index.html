@@ -207,11 +207,18 @@
       font-size: 0.9em;
     }
 
-    .form-group input {
+    .form-group input,
+    .form-group textarea {
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 1em;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
     }
 
     .calculate-btn, .save-btn {
