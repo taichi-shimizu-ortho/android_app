@@ -6,6 +6,7 @@ let sections = [];
 let currentSection = 0;
 let timerInterval = null;
 let timerSeconds = 0;
+let totalTimerSeconds = 0;
 
 async function loadProtocols() {
   try {
@@ -108,6 +109,7 @@ function displaySection() {
       <div class="timer-display" id="timer-display">
         ${totalDuration}:00
       </div>
+      <p class="elapsed-time" id="elapsed-time">経過: 0:00</p>
       <div class="timer-buttons">
         <button id="timer-start" onclick="startTimer(${totalDuration})">開始</button>
         <button id="timer-pause" onclick="pauseTimer()" style="display:none;">一時停止</button>
@@ -151,6 +153,7 @@ async function startTimer(minutes) {
 
   if (!timerSeconds) {
     timerSeconds = minutes * 60;
+    totalTimerSeconds = minutes * 60;
   }
 
   startBtn.style.display = 'none';
@@ -168,6 +171,7 @@ async function startTimer(minutes) {
   timerInterval = setInterval(() => {
     timerSeconds--;
     updateTimerDisplay();
+    updateElapsedTime();
 
     if (timerSeconds <= 0) {
       clearInterval(timerInterval);
@@ -193,11 +197,13 @@ function resetTimer(minutes) {
   clearInterval(timerInterval);
   timerInterval = null;
   timerSeconds = 0;
+  totalTimerSeconds = 0;
 
   const section = sections[currentSection];
   const duration = minutes || (section && section.total_duration) || 0;
   if (duration > 0) {
     document.getElementById('timer-display').textContent = `${duration}:00`;
+    document.getElementById('elapsed-time').textContent = '経過: 0:00';
   }
 
   const startBtn = document.getElementById('timer-start');
@@ -212,6 +218,16 @@ function updateTimerDisplay() {
   const display = document.getElementById('timer-display');
   if (display) {
     display.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+function updateElapsedTime() {
+  const elapsedSeconds = totalTimerSeconds - timerSeconds;
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+  const display = document.getElementById('elapsed-time');
+  if (display) {
+    display.textContent = `経過: ${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 }
 
