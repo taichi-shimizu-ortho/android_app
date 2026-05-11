@@ -1,6 +1,6 @@
 # Android App Project
 
-マルチアプリプロジェクト。timer と prompter の2つのアプリを管理しています。
+マルチアプリプロジェクト。timer、prompter、protocol の3つのアプリを管理しています。
 
 ## フォルダ構成
 
@@ -10,14 +10,22 @@ android_app/
 │   ├── index.html
 │   ├── manifest.json
 │   ├── sw.js          (Service Worker)
-│   └── main.py
+│   ├── main.py
+│   └── icons/
 ├── prompter/           # プロンプターアプリ
 │   ├── index.html
 │   ├── manifest.json
 │   ├── sw.js          (Service Worker)
-│   └── main.py
+│   ├── main.py
+│   └── icons/
+├── protocol/           # 滑膜由来MSC継代プロトコルアプリ
+│   ├── index.html
+│   ├── manifest.json
+│   ├── sw.js          (Service Worker)
+│   ├── main.js
+│   └── icons/
 ├── shared/
-│   └── icons/          # PWA用アイコン（両アプリで共有）
+│   └── icons/          # PWA用アイコン（共有）
 ├── pyproject.toml      # Python依存関係
 └── .gitignore
 ```
@@ -31,6 +39,11 @@ android_app/
 ### Prompter
 - URL: `/android_app/prompter/`
 - PWA 対応
+
+### Protocol
+- URL: `/android_app/protocol/`
+- PWA 対応
+- 機能: 細胞培養プロトコル手順ガイド、タイマー機能、Supabase 統合
 
 ## 開発
 
