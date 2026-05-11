@@ -343,7 +343,7 @@ async function saveCellCount() {
           count_1: value1,
           count_2: value2,
           counted_value_mean: avgValue,
-          cell_count: cellCountPerMlHundredThousand,
+          cell_count: avgValue * 100000,
           density: cellDensityDisplay,
           notes: notesInput
         })
