@@ -85,7 +85,8 @@ function displaySection() {
         </div>
         <div id="result-display" class="result-display" style="display:none;">
           <p>平均計数値: <span id="avg-value"></span></p>
-          <p>細胞数: <span id="cell-count-value"></span> × 10<sup>5</sup> cells/mL</p>
+          <p id="cell-count-display"></p>
+          <p id="cell-density-display" style="display:none;"></p>
           <p class="volume-result">播種に必要な体積: <span id="volume-value"></span> μL</p>
           <div class="form-group">
             <label>メモ（任意）</label>
@@ -283,13 +284,18 @@ function autoCellCount() {
   // 平均値 < 2.5（25万個未満）の場合
   if (avgValue < 2.5) {
     const cellDensityDisplay = Math.floor(cellDensityPerCm2); // 小数点切り捨て
-    document.getElementById('cell-count-value').innerHTML =
-      `${cellCountPerMlHundredThousand.toFixed(1)}<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensityDisplay} cells/cm²</span>`;
+    document.getElementById('cell-count-display').innerHTML =
+      `細胞数: ${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells/mL`;
+    document.getElementById('cell-density-display').innerHTML =
+      `密度: ${cellDensityDisplay} cells/cm²`;
+    document.getElementById('cell-density-display').style.display = 'block';
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
     document.getElementById('volume-value').parentElement.style.color = '#e65100';
   } else {
-    document.getElementById('cell-count-value').textContent = cellCountPerMlHundredThousand.toFixed(2);
+    document.getElementById('cell-count-display').innerHTML =
+      `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
+    document.getElementById('cell-density-display').style.display = 'none';
     document.getElementById('volume-value').textContent = volumeUl.toFixed(1);
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#fff9c4';
     document.getElementById('volume-value').parentElement.style.color = '#f57f17';
