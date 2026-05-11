@@ -84,7 +84,7 @@ function displaySection() {
         </div>
         <div id="result-display" class="result-display" style="display:none;">
           <p>平均計数値: <span id="avg-value"></span></p>
-          <p>細胞数: <span id="cell-count-value"></span> × 10<sup>6</sup> cells/mL</p>
+          <p>細胞数: <span id="cell-count-value"></span> × 10<sup>5</sup> cells/mL</p>
           <p class="volume-result">播種に必要な体積: <span id="volume-value"></span> μL</p>
           <button onclick="saveCellCount()" class="save-btn">ログに保存</button>
         </div>
@@ -237,16 +237,16 @@ function autoCellCount() {
   // 平均計数値
   const avgValue = (value1 + value2) / 2;
 
-  // 希釈倍率=2（固定）、計算式: 平均 × 2 × 10^4 = 細胞数/mL
-  const cellCountPerMl = avgValue * 2 * 10000;
-  const cellCountPerMlMillion = cellCountPerMl / 1000000; // × 10^6 単位に変換
+  // 希釈倍率=2（固定）、計算式: 平均 × 2 × 10^5 = 細胞数/mL
+  const cellCountPerMl = avgValue * 2 * 100000;
+  const cellCountPerMlHundredThousand = cellCountPerMl / 100000; // × 10^5 単位に変換
 
   // 25万個に必要な体積(uL) = 250000 / (細胞数/mL) × 1000
   const volumeUl = (250000 / cellCountPerMl) * 1000;
 
   // 表示
   document.getElementById('avg-value').textContent = avgValue.toFixed(1);
-  document.getElementById('cell-count-value').textContent = cellCountPerMlMillion.toFixed(2);
+  document.getElementById('cell-count-value').textContent = cellCountPerMlHundredThousand.toFixed(2);
   document.getElementById('volume-value').textContent = volumeUl.toFixed(1);
   document.getElementById('result-display').style.display = 'block';
 
