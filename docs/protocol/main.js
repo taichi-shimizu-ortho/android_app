@@ -275,16 +275,16 @@ function autoCellCount() {
 
   // 100mm シャーレの密度計算
   const dishArea = 78.5; // cm²
-  const cellDensity = cellCountPerMl / (dishArea * 1000); // cells/cm²
+  const cellDensityPerCm2 = cellCountPerMl / dishArea; // cells/cm²
 
   // 表示
   document.getElementById('avg-value').textContent = avgValue.toFixed(1);
 
   // 平均値 < 2.5（25万個未満）の場合
   if (avgValue < 2.5) {
-    const cellDensity100k = cellDensity * 100; // × 10^5 単位に変換
+    const cellDensityDisplay = Math.floor(cellDensityPerCm2); // 小数点切り捨て
     document.getElementById('cell-count-value').innerHTML =
-      `${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells/mL<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensity100k.toFixed(1)} × 10<sup>5</sup> cells</span>`;
+      `${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells/mL<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensityDisplay} cells/cm²</span>`;
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
     document.getElementById('volume-value').parentElement.style.color = '#e65100';
