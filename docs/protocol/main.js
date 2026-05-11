@@ -282,9 +282,9 @@ function autoCellCount() {
 
   // 平均値 < 2.5（25万個未満）の場合
   if (avgValue < 2.5) {
-    const cellCount = cellCountPerMl / 1000; // 単位を千個に変換
+    const cellDensity100k = cellDensity * 100; // × 10^5 単位に変換
     document.getElementById('cell-count-value').innerHTML =
-      `${cellCount.toFixed(0)}k cells/mL<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensity.toFixed(0)} cells/cm²</span>`;
+      `${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensity100k.toFixed(1)} × 10<sup>5</sup> cells</span>`;
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
     document.getElementById('volume-value').parentElement.style.color = '#e65100';
