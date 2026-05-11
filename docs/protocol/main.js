@@ -75,19 +75,17 @@ function displaySection() {
       <h3>細胞数計算機</h3>
       <div class="calculator-form">
         <div class="form-group">
-          <label>計数値</label>
-          <input type="number" id="counted-value" placeholder="例: 120" step="0.1">
+          <label>計測1（計数値）</label>
+          <input type="number" id="counted-value-1" placeholder="例: 120" step="0.1" onchange="autoCellCount()" oninput="autoCellCount()">
         </div>
         <div class="form-group">
-          <label>希釈倍率</label>
-          <input type="number" id="dilution-ratio" placeholder="例: 2" step="0.1">
-        </div>
-        <div class="form-group">
-          <label>計算式: 計数値 × 希釈倍率 × 10^4</label>
-          <button onclick="calculateCellCount()" class="calculate-btn">計算</button>
+          <label>計測2（計数値）</label>
+          <input type="number" id="counted-value-2" placeholder="例: 110" step="0.1" onchange="autoCellCount()" oninput="autoCellCount()">
         </div>
         <div id="result-display" class="result-display" style="display:none;">
-          <p>細胞数: <span id="result-value"></span> × 10<sup>5</sup> cells/mL</p>
+          <p>平均計数値: <span id="avg-value"></span></p>
+          <p>細胞数: <span id="cell-count-value"></span> × 10<sup>6</sup> cells/mL</p>
+          <p class="volume-result">播種に必要な体積: <span id="volume-value"></span> μL</p>
           <button onclick="saveCellCount()" class="save-btn">ログに保存</button>
         </div>
       </div>
@@ -226,30 +224,43 @@ function playNotification() {
   oscillator.stop(audioContext.currentTime + 0.5);
 }
 
-function calculateCellCount() {
-  const countedValue = parseFloat(document.getElementById('counted-value').value);
-  const dilutionRatio = parseFloat(document.getElementById('dilution-ratio').value);
+function autoCellCount() {
+  const value1 = parseFloat(document.getElementById('counted-value-1').value);
+  const value2 = parseFloat(document.getElementById('counted-value-2').value);
 
-  if (!countedValue || !dilutionRatio || countedValue <= 0 || dilutionRatio <= 0) {
-    alert('計数値と希釈倍率を正しく入力してください');
+  // 両方入力されていない場合は表示しない
+  if (!value1 || !value2 || value1 <= 0 || value2 <= 0) {
+    document.getElementById('result-display').style.display = 'none';
     return;
   }
 
-  // 計算: 計数値 × 希釈倍率 × 10^4
-  const cellCount = (countedValue * dilutionRatio * 10000) / 100000; // ÷10^5 で10^5単位に変換
+  // 平均計数値
+  const avgValue = (value1 + value2) / 2;
 
-  document.getElementById('result-value').textContent = cellCount.toFixed(2);
+  // 希釈倍率=2（固定）、計算式: 平均 × 2 × 10^4 = 細胞数/mL
+  const cellCountPerMl = avgValue * 2 * 10000;
+  const cellCountPerMlMillion = cellCountPerMl / 1000000; // × 10^6 単位に変換
+
+  // 25万個に必要な体積(uL) = 250000 / (細胞数/mL) × 1000
+  const volumeUl = (250000 / cellCountPerMl) * 1000;
+
+  // 表示
+  document.getElementById('avg-value').textContent = avgValue.toFixed(1);
+  document.getElementById('cell-count-value').textContent = cellCountPerMlMillion.toFixed(2);
+  document.getElementById('volume-value').textContent = volumeUl.toFixed(1);
   document.getElementById('result-display').style.display = 'block';
 
   // グローバル変数に保存（保存時に使用）
-  window.currentCellCount = cellCount;
-  window.currentCountedValue = countedValue;
-  window.currentDilutionRatio = dilutionRatio;
+  window.currentCellCount = cellCountPerMlMillion;
+  window.currentCountedValue1 = value1;
+  window.currentCountedValue2 = value2;
+  window.currentAvgValue = avgValue;
+  window.currentVolumeUl = volumeUl;
 }
 
 async function saveCellCount() {
   if (!window.currentCellCount) {
-    alert('先に計算を実行してください');
+    alert('先に計測値を入力してください');
     return;
   }
 
@@ -265,8 +276,9 @@ async function saveCellCount() {
         },
         body: JSON.stringify({
           cell_count: window.currentCellCount,
-          counted_value: window.currentCountedValue,
-          dilution_ratio: window.currentDilutionRatio
+          counted_value: window.currentAvgValue,
+          dilution_ratio: 2,
+          notes: `計測1: ${window.currentCountedValue1}, 計測2: ${window.currentCountedValue2}, 必要体積: ${window.currentVolumeUl.toFixed(1)} uL`
         })
       }
     );
@@ -275,11 +287,11 @@ async function saveCellCount() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    alert(`ログを保存しました: ${window.currentCellCount.toFixed(2)} × 10^5 cells/mL`);
+    alert(`ログを保存しました:\n${window.currentCellCount.toFixed(2)} × 10^6 cells/mL\n必要体積: ${window.currentVolumeUl.toFixed(1)} μL`);
 
     // フォームをリセット
-    document.getElementById('counted-value').value = '';
-    document.getElementById('dilution-ratio').value = '';
+    document.getElementById('counted-value-1').value = '';
+    document.getElementById('counted-value-2').value = '';
     document.getElementById('result-display').style.display = 'none';
     window.currentCellCount = null;
   } catch (error) {
@@ -294,7 +306,7 @@ window.previousSection = previousSection;
 window.startTimer = startTimer;
 window.pauseTimer = pauseTimer;
 window.resetTimer = resetTimer;
-window.calculateCellCount = calculateCellCount;
+window.autoCellCount = autoCellCount;
 window.saveCellCount = saveCellCount;
 
 // Service Worker登録
