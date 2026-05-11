@@ -284,7 +284,7 @@ function autoCellCount() {
   if (avgValue < 2.5) {
     const cellDensity100k = cellDensity * 100; // × 10^5 単位に変換
     document.getElementById('cell-count-value').innerHTML =
-      `${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensity100k.toFixed(1)} × 10<sup>5</sup> cells</span>`;
+      `${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells/mL<br><span style="font-size:0.9em; color:#666;">密度: ${cellDensity100k.toFixed(1)} × 10<sup>5</sup> cells</span>`;
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
     document.getElementById('volume-value').parentElement.style.color = '#e65100';
