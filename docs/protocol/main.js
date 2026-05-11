@@ -172,10 +172,7 @@ async function startTimer(minutes) {
     if (timerSeconds <= 0) {
       clearInterval(timerInterval);
       timerInterval = null;
-      // 音を出さずに振動のみ（または何もしない）
-      if ('vibrate' in navigator) {
-        navigator.vibrate([200, 100, 200]);
-      }
+      playNotification();
       startBtn.style.display = 'inline-block';
       pauseBtn.style.display = 'none';
     }
