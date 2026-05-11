@@ -142,7 +142,7 @@ function previousSection() {
   }
 }
 
-function startTimer(minutes) {
+async function startTimer(minutes) {
   if (timerInterval) return;
 
   const startBtn = document.getElementById('timer-start');
@@ -156,6 +156,15 @@ function startTimer(minutes) {
   startBtn.style.display = 'none';
   pauseBtn.style.display = 'inline-block';
 
+  // Android スリープ抑制
+  if ('wakeLock' in navigator) {
+    try {
+      await navigator.wakeLock.request('screen');
+    } catch (err) {
+      console.warn('Wake Lock failed:', err);
+    }
+  }
+
   timerInterval = setInterval(() => {
     timerSeconds--;
     updateTimerDisplay();
@@ -163,7 +172,10 @@ function startTimer(minutes) {
     if (timerSeconds <= 0) {
       clearInterval(timerInterval);
       timerInterval = null;
-      playNotification();
+      // 音を出さずに振動のみ（または何もしない）
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200]);
+      }
       startBtn.style.display = 'inline-block';
       pauseBtn.style.display = 'none';
     }
@@ -251,7 +263,7 @@ function autoCellCount() {
   document.getElementById('result-display').style.display = 'block';
 
   // グローバル変数に保存（保存時に使用）
-  window.currentCellCount = cellCountPerMlMillion;
+  window.currentCellCount = cellCountPerMlHundredThousand;
   window.currentCountedValue1 = value1;
   window.currentCountedValue2 = value2;
   window.currentAvgValue = avgValue;
@@ -259,10 +271,19 @@ function autoCellCount() {
 }
 
 async function saveCellCount() {
-  if (!window.currentCellCount) {
-    alert('先に計測値を入力してください');
+  // 再度計算を実行（DOM がリセットされている可能性があるため）
+  const value1 = parseFloat(document.getElementById('counted-value-1').value);
+  const value2 = parseFloat(document.getElementById('counted-value-2').value);
+
+  if (!value1 || !value2 || value1 <= 0 || value2 <= 0) {
+    alert('計測値を両方入力してください');
     return;
   }
+
+  const avgValue = (value1 + value2) / 2;
+  const cellCountPerMl = avgValue * 100000;
+  const cellCountPerMlHundredThousand = cellCountPerMl / 100000;
+  const volumeUl = (250000 / cellCountPerMl) * 1000;
 
   try {
     const response = await fetch(
@@ -275,10 +296,10 @@ async function saveCellCount() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          cell_count: window.currentCellCount,
-          counted_value: window.currentAvgValue,
+          cell_count: cellCountPerMlHundredThousand,
+          counted_value: avgValue,
           dilution_ratio: 1,
-          notes: `計測1: ${window.currentCountedValue1}, 計測2: ${window.currentCountedValue2}, 必要体積: ${window.currentVolumeUl.toFixed(1)} uL`
+          notes: `計測1: ${value1}, 計測2: ${value2}, 必要体積: ${volumeUl.toFixed(1)} uL`
         })
       }
     );
@@ -287,7 +308,7 @@ async function saveCellCount() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    alert(`ログを保存しました:\n${window.currentCellCount.toFixed(2)} × 10^6 cells/mL\n必要体積: ${window.currentVolumeUl.toFixed(1)} μL`);
+    alert(`ログを保存しました:\n${cellCountPerMlHundredThousand.toFixed(2)} × 10^5 cells/mL\n必要体積: ${volumeUl.toFixed(1)} μL`);
 
     // フォームをリセット
     document.getElementById('counted-value-1').value = '';
