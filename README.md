@@ -33,15 +33,15 @@ android_app/
 ## 各アプリの起動
 
 ### Timer
-- URL: `/android_app/timer/`
+- URL: https://taichi-shimizu-ortho.github.io/android_app/timer/
 - PWA 対応
 
 ### Prompter
-- URL: `/android_app/prompter/`
+- URL: https://taichi-shimizu-ortho.github.io/android_app/prompter/
 - PWA 対応
 
 ### Protocol
-- URL: `/android_app/protocol/`
+- URL: https://taichi-shimizu-ortho.github.io/android_app/protocol/
 - PWA 対応
 - 機能: 細胞培養プロトコル手順ガイド、タイマー機能、Supabase 統合
 
