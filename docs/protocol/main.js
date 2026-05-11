@@ -278,14 +278,14 @@ function autoCellCount() {
   const dishArea = 78.5; // cm²
   const cellDensityPerCm2 = cellCountPerMl / dishArea; // cells/cm²
 
-  // 表示
-  document.getElementById('avg-value').textContent = avgValue.toFixed(1);
+  // 表示（有効数字3桁）
+  document.getElementById('avg-value').textContent = avgValue.toFixed(2);
 
   // 平均値 < 2.5（25万個未満）の場合
   if (avgValue < 2.5) {
     const cellDensityDisplay = Math.floor(cellDensityPerCm2); // 小数点切り捨て
     document.getElementById('cell-count-display').innerHTML =
-      `細胞数: ${cellCountPerMlHundredThousand.toFixed(1)} × 10<sup>5</sup> cells/mL`;
+      `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
     document.getElementById('cell-density-display').innerHTML =
       `密度: ${cellDensityDisplay} cells/cm²`;
     document.getElementById('cell-density-display').style.display = 'block';
