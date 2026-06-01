@@ -1,45 +1,34 @@
-// Google Sheets 設定
-const CLIENT_ID = '933170879377-cu87tlo4b90q7gkojq2duha0a7tmnpm4.apps.googleusercontent.com';
-const PROTOCOLS_SHEET_ID = '1hVMUM2rm1wxcmaAa0u_agym87aBT34K1fPBePYWB7ag';
-const EXPERIMENT_LOGS_SHEET_ID = '1x1nRhXyxEky-Zdm34BMwphoONvCc1BsyoKWWJa_Dv_w';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+// Supabase 設定
+const SUPABASE_URL = 'https://zfuklmuilcejinkzfimq.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_yB7PtClaSDoX7S074E1wLA_KoEpg5uN';
+
+// Google Apps Script Webhook
+const GAS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyhM0vfgDuCC_0DDN_G2ahnh-zeFb4YnbjdgKxknMtDyEwgsnrlD6G0SKeuHgDFmxAy/exec';
 
 let sections = [];
 let currentSection = 0;
 let timerInterval = null;
 let timerSeconds = 0;
 let totalTimerSeconds = 0;
-let gapi_loaded = false;
-let auth_instance = null;
 
 async function loadProtocols() {
   try {
-    if (!gapi_loaded) {
-      throw new Error('Google API がまだ読み込まれていません');
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/protocols?select=*&order=section_number.asc,step_number.asc`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const response = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: PROTOCOLS_SHEET_ID,
-      range: 'protocols!A2:I1000'
-    });
-
-    const rows = response.result.values || [];
-    if (rows.length === 0) {
-      throw new Error('プロトコルデータが見つかりません');
-    }
-
-    const protocols = rows.map(row => ({
-      id: row[0],
-      section_number: parseInt(row[1]),
-      section_title: row[2],
-      step_number: parseInt(row[3]),
-      step_title: row[4],
-      description: row[5],
-      duration_minutes: parseInt(row[6]) || 0,
-      notes: row[7],
-      created_at: row[8]
-    }));
-
+    const protocols = await response.json();
     sections = groupBySection(protocols);
     currentSection = 0;
     displaySection();
@@ -340,30 +329,31 @@ async function saveCellCount() {
   const cellDensityPerCm2 = cellCountPerMl / dishArea;
   const cellDensityDisplay = Math.round(cellDensityPerCm2);
   const notesInput = document.getElementById('notes-input').value || '';
-  const timestamp = new Date().toISOString();
 
   try {
-    if (!gapi_loaded) {
-      throw new Error('Google API がまだ読み込まれていません');
+    const response = await fetch(GAS_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        count_1: value1,
+        count_2: value2,
+        counted_value_mean: avgValue,
+        cell_count: cellCountPerMl,
+        notes: notesInput,
+        density: cellDensityDisplay
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const response = await gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId: EXPERIMENT_LOGS_SHEET_ID,
-      range: 'experiment_logs!A2:G2',
-      valueInputOption: 'USER_ENTERED',
-      resource: {
-        values: [[
-          '',
-          timestamp,
-          value1,
-          value2,
-          avgValue,
-          cellCountPerMl,
-          notesInput,
-          cellDensityDisplay
-        ]]
-      }
-    });
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Unknown error');
+    }
 
     alert(`ログを保存しました:\n${cellCountPerMlHundredThousand.toFixed(2)} × 10^5 cells/mL\n必要体積: ${volumeUl.toFixed(1)} μL`);
 
@@ -387,54 +377,6 @@ window.resetTimer = resetTimer;
 window.autoCellCount = autoCellCount;
 window.saveCellCount = saveCellCount;
 
-// Google API 初期化
-function initializeGoogleAPI() {
-  if (typeof gapi === 'undefined') {
-    console.error('gapi not loaded');
-    document.getElementById('step-container').innerHTML =
-      `<p style="color: red;">Google API スクリプトが読み込まれていません</p>`;
-    return;
-  }
-
-  gapi.load('client:auth2', async () => {
-    try {
-      console.log('Initializing Google API with CLIENT_ID:', CLIENT_ID);
-
-      await gapi.client.init({
-        clientId: CLIENT_ID,
-        scope: SCOPES,
-        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-      });
-
-      console.log('Google API initialized successfully');
-      auth_instance = gapi.auth2.getAuthInstance();
-      gapi_loaded = true;
-
-      // ユーザーがサインインしているかチェック
-      if (!auth_instance.isSignedIn.get()) {
-        console.log('User not signed in, attempting auto sign-in');
-        try {
-          await auth_instance.signIn();
-          console.log('Auto sign-in successful');
-        } catch (err) {
-          console.warn('Auto sign-in failed:', err);
-          document.getElementById('step-container').innerHTML =
-            `<p style="color: red;">Google サインインが必要です<br/>ページをリロードして再度サインインしてください<br/>エラー: ${err.message}</p>`;
-          return;
-        }
-      } else {
-        console.log('User already signed in');
-      }
-
-      loadProtocols();
-    } catch (error) {
-      console.error('Google API initialization failed:', error);
-      document.getElementById('step-container').innerHTML =
-        `<p style="color: red;">Google API 初期化エラー: ${error.message}<br/>コンソール(F12)を確認してください</p>`;
-    }
-  });
-}
-
 // Service Worker登録
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/android_app/protocol/sw.js').catch(err => {
@@ -442,5 +384,5 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Google API 初期化
-initializeGoogleAPI();
+// 初期化
+loadProtocols();
