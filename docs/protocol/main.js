@@ -1,31 +1,45 @@
-// Supabase初期化
-const SUPABASE_URL = 'https://zfuklmuilcejinkzfimq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_yB7PtClaSDoX7S074E1wLA_KoEpg5uN';
+// Google Sheets 設定
+const CLIENT_ID = '933170879377-cu87tlo4b90q7gkojq2duha0a7tmnpm4.apps.googleusercontent.com';
+const PROTOCOLS_SHEET_ID = '1hVMUM2rm1wxcmaAa0u_agym87aBT34K1fPBePYWB7ag';
+const EXPERIMENT_LOGS_SHEET_ID = '1x1nRhXyxEky-Zdm34BMwphoONvCc1BsyoKWWJa_Dv_w';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
 let sections = [];
 let currentSection = 0;
 let timerInterval = null;
 let timerSeconds = 0;
 let totalTimerSeconds = 0;
+let gapi_loaded = false;
+let auth_instance = null;
 
 async function loadProtocols() {
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/protocols?select=*&order=section_number.asc,step_number.asc`,
-      {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!gapi_loaded) {
+      throw new Error('Google API がまだ読み込まれていません');
     }
 
-    const protocols = await response.json();
+    const response = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: PROTOCOLS_SHEET_ID,
+      range: 'protocols!A2:I1000'
+    });
+
+    const rows = response.result.values || [];
+    if (rows.length === 0) {
+      throw new Error('プロトコルデータが見つかりません');
+    }
+
+    const protocols = rows.map(row => ({
+      id: row[0],
+      section_number: parseInt(row[1]),
+      section_title: row[2],
+      step_number: parseInt(row[3]),
+      step_title: row[4],
+      description: row[5],
+      duration_minutes: parseInt(row[6]) || 0,
+      notes: row[7],
+      created_at: row[8]
+    }));
+
     sections = groupBySection(protocols);
     currentSection = 0;
     displaySection();
@@ -310,7 +324,6 @@ function autoCellCount() {
 }
 
 async function saveCellCount() {
-  // 再度計算を実行（DOM がリセットされている可能性があるため）
   const value1 = parseFloat(document.getElementById('counted-value-1').value);
   const value2 = parseFloat(document.getElementById('counted-value-2').value);
 
@@ -323,39 +336,37 @@ async function saveCellCount() {
   const cellCountPerMl = avgValue * 100000;
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000;
   const volumeUl = (250000 / cellCountPerMl) * 1000;
-  const dishArea = 78.5; // cm²
+  const dishArea = 78.5;
   const cellDensityPerCm2 = cellCountPerMl / dishArea;
   const cellDensityDisplay = Math.round(cellDensityPerCm2);
   const notesInput = document.getElementById('notes-input').value || '';
+  const timestamp = new Date().toISOString();
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/experiment_logs`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          count_1: value1,
-          count_2: value2,
-          counted_value_mean: avgValue,
-          cell_count: avgValue * 100000,
-          density: cellDensityDisplay,
-          notes: notesInput
-        })
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!gapi_loaded) {
+      throw new Error('Google API がまだ読み込まれていません');
     }
+
+    const response = await gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId: EXPERIMENT_LOGS_SHEET_ID,
+      range: 'experiment_logs!A2:G2',
+      valueInputOption: 'USER_ENTERED',
+      resource: {
+        values: [[
+          '',
+          timestamp,
+          value1,
+          value2,
+          avgValue,
+          cellCountPerMl,
+          notesInput,
+          cellDensityDisplay
+        ]]
+      }
+    });
 
     alert(`ログを保存しました:\n${cellCountPerMlHundredThousand.toFixed(2)} × 10^5 cells/mL\n必要体積: ${volumeUl.toFixed(1)} μL`);
 
-    // フォームをリセット
     document.getElementById('counted-value-1').value = '';
     document.getElementById('counted-value-2').value = '';
     document.getElementById('notes-input').value = '';
@@ -363,7 +374,7 @@ async function saveCellCount() {
     window.currentCellCount = null;
   } catch (error) {
     console.error('Error saving cell count:', error);
-    alert('ログ保存に失敗しました');
+    alert('ログ保存に失敗しました: ' + error.message);
   }
 }
 
@@ -376,6 +387,42 @@ window.resetTimer = resetTimer;
 window.autoCellCount = autoCellCount;
 window.saveCellCount = saveCellCount;
 
+// Google API 初期化
+function initializeGoogleAPI() {
+  gapi.load('client:auth2', async () => {
+    try {
+      await gapi.client.init({
+        apiKey: undefined,
+        clientId: CLIENT_ID,
+        scope: SCOPES,
+        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+      });
+
+      auth_instance = gapi.auth2.getAuthInstance();
+      gapi_loaded = true;
+
+      // ユーザーがサインインしているかチェック
+      if (!auth_instance.isSignedIn.get()) {
+        // サインインを自動実行（ポップアップなし）
+        try {
+          await auth_instance.signIn();
+        } catch (err) {
+          console.warn('Auto sign-in failed, user may need to click to sign in');
+          document.getElementById('step-container').innerHTML =
+            `<p style="color: red;">Google サインインが必要です<br/>ページをリロードして再度サインインしてください</p>`;
+          return;
+        }
+      }
+
+      loadProtocols();
+    } catch (error) {
+      console.error('Google API initialization failed:', error);
+      document.getElementById('step-container').innerHTML =
+        `<p style="color: red;">Google API 初期化エラー: ${error.message}</p>`;
+    }
+  });
+}
+
 // Service Worker登録
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/android_app/protocol/sw.js').catch(err => {
@@ -383,5 +430,5 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// 初期化
-loadProtocols();
+// Google API 初期化
+initializeGoogleAPI();
