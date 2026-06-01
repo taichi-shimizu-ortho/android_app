@@ -353,6 +353,16 @@ async function saveCellCount() {
   const notesInput = document.getElementById('notes-input').value || '';
 
   try {
+    console.log('Sending request to:', GAS_WEBHOOK_URL);
+    console.log('Payload:', {
+      count_1: value1,
+      count_2: value2,
+      counted_value_mean: avgValue,
+      cell_count: cellCountPerMl,
+      notes: notesInput,
+      density: cellDensityDisplay
+    });
+
     const response = await fetch(GAS_WEBHOOK_URL, {
       method: 'POST',
       headers: {
@@ -368,11 +378,19 @@ async function saveCellCount() {
       })
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
+    const responseText = await response.text();
+    console.log('Response text:', responseText);
+
+    const result = JSON.parse(responseText);
+    console.log('Parsed result:', result);
+
     if (!result.success) {
       throw new Error(result.error || 'Unknown error');
     }
@@ -384,6 +402,7 @@ async function saveCellCount() {
     hasUnsavedDataInSection6 = false;
   } catch (error) {
     console.error('Error saving cell count:', error);
+    console.error('Error stack:', error.stack);
     alert('ログ保存に失敗しました: ' + error.message);
   }
 }
