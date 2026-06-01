@@ -361,13 +361,14 @@ async function saveCellCount() {
   const notesInput = document.getElementById('notes-input').value || '';
 
   try {
-    console.log('Sending data to Google Forms:', {
+    console.log('Saving to Google Forms and Supabase:', {
       count_1: value1,
       count_2: value2,
       density: cellDensityDisplay,
       notes: notesInput
     });
 
+    // Google Forms に送信
     const formData = new FormData();
     formData.append(FORM_ENTRIES.count_1, value1);
     formData.append(FORM_ENTRIES.count_2, value2);
@@ -375,13 +376,40 @@ async function saveCellCount() {
     formData.append(FORM_ENTRIES.density, cellDensityDisplay);
     formData.append(FORM_ENTRIES.notes, notesInput);
 
-    const response = await fetch(GOOGLE_FORM_URL, {
+    const formResponse = await fetch(GOOGLE_FORM_URL, {
       method: 'POST',
       body: formData,
       mode: 'no-cors'
     });
 
-    console.log('Form submission completed');
+    console.log('Google Forms submission completed');
+
+    // Supabase にもバックアップで送信
+    const supabaseResponse = await fetch(
+      `${SUPABASE_URL}/rest/v1/experiment_logs`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          count_1: value1,
+          count_2: value2,
+          counted_value_mean: avgValue,
+          cell_count: cellCountPerMl,
+          density: cellDensityDisplay,
+          notes: notesInput
+        })
+      }
+    );
+
+    if (!supabaseResponse.ok) {
+      console.warn('Supabase backup failed, but Google Forms saved successfully');
+    } else {
+      console.log('Supabase backup saved successfully');
+    }
 
     alert(`ログを保存しました:\n${cellCountPerMlHundredThousand.toFixed(2)} × 10^5 cells/mL\n必要体積: ${volumeUl.toFixed(1)} μL`);
 
