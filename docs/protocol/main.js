@@ -2,8 +2,15 @@
 const SUPABASE_URL = 'https://zfuklmuilcejinkzfimq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_yB7PtClaSDoX7S074E1wLA_KoEpg5uN';
 
-// Google Apps Script Webhook
-const GAS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyhM0vfgDuCC_0DDN_G2ahnh-zeFb4YnbjdgKxknMtDyEwgsnrlD6G0SKeuHgDFmxAy/exec';
+// Google Forms 設定
+const GOOGLE_FORM_ID = '1VxNshvXzE5QqtxSh64DxXJLQgIA5bydAB8Vm0ekfHpg';
+const GOOGLE_FORM_URL = `https://docs.google.com/forms/d/${GOOGLE_FORM_ID}/formResponse`;
+const FORM_ENTRIES = {
+  count_1: 'entry.965089671',
+  count_2: 'entry.766252459',
+  density: 'entry.1236607395',
+  notes: 'entry.1858207442'
+};
 
 let sections = [];
 let currentSection = 0;
@@ -353,47 +360,26 @@ async function saveCellCount() {
   const notesInput = document.getElementById('notes-input').value || '';
 
   try {
-    console.log('Sending request to:', GAS_WEBHOOK_URL);
-    console.log('Payload:', {
+    console.log('Sending data to Google Forms:', {
       count_1: value1,
       count_2: value2,
-      counted_value_mean: avgValue,
-      cell_count: cellCountPerMl,
-      notes: notesInput,
-      density: cellDensityDisplay
+      density: cellDensityDisplay,
+      notes: notesInput
     });
 
-    const response = await fetch(GAS_WEBHOOK_URL, {
+    const formData = new FormData();
+    formData.append(FORM_ENTRIES.count_1, value1);
+    formData.append(FORM_ENTRIES.count_2, value2);
+    formData.append(FORM_ENTRIES.density, cellDensityDisplay);
+    formData.append(FORM_ENTRIES.notes, notesInput);
+
+    const response = await fetch(GOOGLE_FORM_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        count_1: value1,
-        count_2: value2,
-        counted_value_mean: avgValue,
-        cell_count: cellCountPerMl,
-        notes: notesInput,
-        density: cellDensityDisplay
-      })
+      body: formData,
+      mode: 'no-cors'
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', response.headers);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const responseText = await response.text();
-    console.log('Response text:', responseText);
-
-    const result = JSON.parse(responseText);
-    console.log('Parsed result:', result);
-
-    if (!result.success) {
-      throw new Error(result.error || 'Unknown error');
-    }
+    console.log('Form submission completed');
 
     alert(`ログを保存しました:\n${cellCountPerMlHundredThousand.toFixed(2)} × 10^5 cells/mL\n必要体積: ${volumeUl.toFixed(1)} μL`);
 
@@ -402,7 +388,6 @@ async function saveCellCount() {
     hasUnsavedDataInSection6 = false;
   } catch (error) {
     console.error('Error saving cell count:', error);
-    console.error('Error stack:', error.stack);
     alert('ログ保存に失敗しました: ' + error.message);
   }
 }
