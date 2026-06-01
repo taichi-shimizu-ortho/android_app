@@ -10,6 +10,7 @@ let currentSection = 0;
 let timerInterval = null;
 let timerSeconds = 0;
 let totalTimerSeconds = 0;
+let hasUnsavedDataInSection6 = false;
 
 async function loadProtocols() {
   try {
@@ -64,6 +65,11 @@ function displaySection() {
   const section = sections[currentSection];
   const container = document.getElementById('step-container');
   const totalDuration = section.total_duration || 0;
+
+  // セクション6に移動したときにフラグをリセット
+  if (section.section_number === 6) {
+    hasUnsavedDataInSection6 = false;
+  }
 
   const stepsHtml = section.steps.map((step, idx) => `
     <div class="step-item">
@@ -138,6 +144,12 @@ function displaySection() {
 
 function nextSection() {
   if (currentSection < sections.length - 1) {
+    // セクション6からの移動時に未保存データがあれば警告
+    if (currentSection === 5 && hasUnsavedDataInSection6) {
+      if (!confirm('未保存のデータがあります。移動しますか？')) {
+        return;
+      }
+    }
     resetTimer();
     currentSection++;
     displaySection();
@@ -146,6 +158,12 @@ function nextSection() {
 
 function previousSection() {
   if (currentSection > 0) {
+    // セクション6からの移動時に未保存データがあれば警告
+    if (currentSection === 5 && hasUnsavedDataInSection6) {
+      if (!confirm('未保存のデータがあります。移動しますか？')) {
+        return;
+      }
+    }
     resetTimer();
     currentSection--;
     displaySection();
@@ -264,8 +282,12 @@ function autoCellCount() {
   // 両方入力されていない場合は表示しない
   if (!value1 || !value2 || value1 <= 0 || value2 <= 0) {
     document.getElementById('result-display').style.display = 'none';
+    hasUnsavedDataInSection6 = false;
     return;
   }
+
+  // データが入力されている場合、未保存フラグを設定
+  hasUnsavedDataInSection6 = true;
 
   // 平均計数値
   const avgValue = (value1 + value2) / 2;
@@ -357,11 +379,9 @@ async function saveCellCount() {
 
     alert(`ログを保存しました:\n${cellCountPerMlHundredThousand.toFixed(2)} × 10^5 cells/mL\n必要体積: ${volumeUl.toFixed(1)} μL`);
 
-    document.getElementById('counted-value-1').value = '';
-    document.getElementById('counted-value-2').value = '';
-    document.getElementById('notes-input').value = '';
-    document.getElementById('result-display').style.display = 'none';
-    window.currentCellCount = null;
+    // フォームと計算結果はそのまま表示（クリアしない）
+    // 未保存フラグをリセット
+    hasUnsavedDataInSection6 = false;
   } catch (error) {
     console.error('Error saving cell count:', error);
     alert('ログ保存に失敗しました: ' + error.message);
