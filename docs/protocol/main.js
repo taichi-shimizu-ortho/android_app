@@ -8,6 +8,8 @@ const GOOGLE_FORM_URL = `https://docs.google.com/forms/d/${GOOGLE_FORM_ID}/formR
 const FORM_ENTRIES = {
   count_1: 'entry.965089671',
   count_2: 'entry.766252459',
+  counted_value_mean: 'entry.1791045490',
+  cell_count: 'entry.76098497',
   density: 'entry.1236607395',
   notes: 'entry.1858207442'
 };
@@ -370,6 +372,8 @@ async function saveCellCount() {
     const formData = new FormData();
     formData.append(FORM_ENTRIES.count_1, value1);
     formData.append(FORM_ENTRIES.count_2, value2);
+    formData.append(FORM_ENTRIES.counted_value_mean, avgValue);
+    formData.append(FORM_ENTRIES.cell_count, cellCountPerMl);
     formData.append(FORM_ENTRIES.density, cellDensityDisplay);
     formData.append(FORM_ENTRIES.notes, notesInput);
 
