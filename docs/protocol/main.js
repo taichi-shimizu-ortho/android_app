@@ -373,7 +373,7 @@ async function saveCellCount() {
     formData.append(FORM_ENTRIES.count_1, value1);
     formData.append(FORM_ENTRIES.count_2, value2);
     formData.append(FORM_ENTRIES.counted_value_mean, avgValue);
-    formData.append(FORM_ENTRIES.cell_count, cellCountPerMl);
+    formData.append(FORM_ENTRIES.cell_count, avgValue); // ×10^5 オーダーで記録
     formData.append(FORM_ENTRIES.density, cellDensityDisplay);
     formData.append(FORM_ENTRIES.notes, notesInput);
 
