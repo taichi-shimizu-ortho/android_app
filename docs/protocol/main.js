@@ -389,36 +389,48 @@ window.saveCellCount = saveCellCount;
 
 // Google API 初期化
 function initializeGoogleAPI() {
+  if (typeof gapi === 'undefined') {
+    console.error('gapi not loaded');
+    document.getElementById('step-container').innerHTML =
+      `<p style="color: red;">Google API スクリプトが読み込まれていません</p>`;
+    return;
+  }
+
   gapi.load('client:auth2', async () => {
     try {
+      console.log('Initializing Google API with CLIENT_ID:', CLIENT_ID);
+
       await gapi.client.init({
-        apiKey: undefined,
         clientId: CLIENT_ID,
         scope: SCOPES,
         discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
       });
 
+      console.log('Google API initialized successfully');
       auth_instance = gapi.auth2.getAuthInstance();
       gapi_loaded = true;
 
       // ユーザーがサインインしているかチェック
       if (!auth_instance.isSignedIn.get()) {
-        // サインインを自動実行（ポップアップなし）
+        console.log('User not signed in, attempting auto sign-in');
         try {
           await auth_instance.signIn();
+          console.log('Auto sign-in successful');
         } catch (err) {
-          console.warn('Auto sign-in failed, user may need to click to sign in');
+          console.warn('Auto sign-in failed:', err);
           document.getElementById('step-container').innerHTML =
-            `<p style="color: red;">Google サインインが必要です<br/>ページをリロードして再度サインインしてください</p>`;
+            `<p style="color: red;">Google サインインが必要です<br/>ページをリロードして再度サインインしてください<br/>エラー: ${err.message}</p>`;
           return;
         }
+      } else {
+        console.log('User already signed in');
       }
 
       loadProtocols();
     } catch (error) {
       console.error('Google API initialization failed:', error);
       document.getElementById('step-container').innerHTML =
-        `<p style="color: red;">Google API 初期化エラー: ${error.message}</p>`;
+        `<p style="color: red;">Google API 初期化エラー: ${error.message}<br/>コンソール(F12)を確認してください</p>`;
     }
   });
 }
