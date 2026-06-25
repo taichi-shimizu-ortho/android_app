@@ -8,9 +8,10 @@ const GOOGLE_FORM_URL = `https://docs.google.com/forms/d/${GOOGLE_FORM_ID}/formR
 const FORM_ENTRIES = {
   count_1: 'entry.965089671',
   count_2: 'entry.766252459',
-  cell_count: 'entry.76098497', // 平均細胞数（×10^5）
+  cell_count: 'entry.76098497',
   density: 'entry.1236607395',
-  notes: 'entry.1858207442'
+  notes: 'entry.1858207442',
+  dish_size: 'entry.1802548858'
 };
 
 let sections = [];
@@ -19,6 +20,7 @@ let timerInterval = null;
 let timerSeconds = 0;
 let totalTimerSeconds = 0;
 let hasUnsavedDataInSection6 = false;
+window.currentDishSize = '100'; // デフォルト: 100mm
 
 async function loadProtocols() {
   try {
@@ -93,6 +95,13 @@ function displaySection() {
       <h3>細胞数計算機</h3>
       <div class="calculator-form">
         <div class="form-group">
+          <label>シャーレサイズ</label>
+          <select id="dish-size" onchange="handleDishSizeChange()">
+            <option value="100" ${window.currentDishSize === '100' ? 'selected' : ''}>100mm (面積: 78.5 cm² / 播種目標: 25万個)</option>
+            <option value="60" ${window.currentDishSize === '60' ? 'selected' : ''}>60mm (面積: 28.26 cm² / 播種目標: 9万個)</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>計測1（×10<sup>5</sup>）</label>
           <input type="number" id="counted-value-1" placeholder="例: 120" step="0.1" onchange="autoCellCount()" oninput="autoCellCount()">
         </div>
@@ -104,7 +113,7 @@ function displaySection() {
           <p>平均計数値: <span id="avg-value"></span></p>
           <p id="cell-count-display"></p>
           <p id="cell-density-display" style="display:none;"></p>
-          <p class="volume-result">播種に必要な体積: <span id="volume-value"></span> μL</p>
+          <p class="volume-result"><span id="volume-label">100mm播種に必要な体積</span>: <span id="volume-value"></span> μL</p>
           <div class="form-group">
             <label>メモ（任意）</label>
             <textarea id="notes-input" placeholder="実験の備考などを入力" rows="2"></textarea>
@@ -283,9 +292,25 @@ function playNotification() {
   oscillator.stop(audioContext.currentTime + 0.5);
 }
 
+function handleDishSizeChange() {
+  const dishSizeEl = document.getElementById('dish-size');
+  if (dishSizeEl) {
+    window.currentDishSize = dishSizeEl.value;
+  }
+  
+  // ラベルを更新
+  const volumeLabel = document.getElementById('volume-label');
+  if (volumeLabel) {
+    volumeLabel.textContent = `${window.currentDishSize}mm播種に必要な体積`;
+  }
+  
+  autoCellCount();
+}
+
 function autoCellCount() {
   const value1 = parseFloat(document.getElementById('counted-value-1').value);
   const value2 = parseFloat(document.getElementById('counted-value-2').value);
+  const dishSize = window.currentDishSize || '100';
 
   // 両方入力されていない場合は表示しない
   if (!value1 || !value2 || value1 <= 0 || value2 <= 0) {
@@ -304,11 +329,22 @@ function autoCellCount() {
   const cellCountPerMl = avgValue * 100000;
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000; // × 10^5 単位に変換
 
-  // 25万個に必要な体積(uL) = 250000 / (細胞数/mL) × 1000
-  const volumeUl = (250000 / cellCountPerMl) * 1000;
+  // シャーレサイズに応じたパラメータ設定
+  let dishArea, targetCells, minAvgValue;
+  if (dishSize === '60') {
+    dishArea = 28.26;     // cm²
+    targetCells = 90000;  // 9万個 (播種密度 ~3,200 cells/cm² を維持)
+    minAvgValue = 0.9;    // 9万個に必要な最小平均値
+  } else {
+    dishArea = 78.5;      // cm²
+    targetCells = 250000; // 25万個 (播種密度 ~3,200 cells/cm² を維持)
+    minAvgValue = 2.5;    // 25万個に必要な最小平均値
+  }
 
-  // 100mm シャーレの密度計算
-  const dishArea = 78.5; // cm²
+  // 必要な体積(uL) = 播種目標 / (細胞数/mL) × 1000
+  const volumeUl = (targetCells / cellCountPerMl) * 1000;
+
+  // 密度計算 (回収時密度)
   const cellDensityPerCm2 = cellCountPerMl / dishArea; // cells/cm²
   const cellDensityRounded = Math.round(cellDensityPerCm2); // 四捨五入
 
@@ -319,11 +355,17 @@ function autoCellCount() {
   document.getElementById('cell-count-display').innerHTML =
     `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
   document.getElementById('cell-density-display').innerHTML =
-    `密度: ${cellDensityRounded} cells/cm²`;
+    `回収密度: ${cellDensityRounded} cells/cm²`;
   document.getElementById('cell-density-display').style.display = 'block';
 
-  // 平均値 < 2.5（25万個未満）の場合
-  if (avgValue < 2.5) {
+  // ラベルテキスト更新
+  const volumeLabel = document.getElementById('volume-label');
+  if (volumeLabel) {
+    volumeLabel.textContent = `${dishSize}mm播種に必要な体積`;
+  }
+
+  // 平均値が最小値未満の場合
+  if (avgValue < minAvgValue) {
     document.getElementById('volume-value').textContent = '播種に充分な細胞数ではありません';
     document.getElementById('volume-value').parentElement.style.backgroundColor = '#ffe0b2';
     document.getElementById('volume-value').parentElement.style.color = '#e65100';
@@ -345,17 +387,27 @@ function autoCellCount() {
 async function saveCellCount() {
   const value1 = parseFloat(document.getElementById('counted-value-1').value);
   const value2 = parseFloat(document.getElementById('counted-value-2').value);
+  const dishSize = window.currentDishSize || '100';
 
   if (!value1 || !value2 || value1 <= 0 || value2 <= 0) {
     alert('計測値を両方入力してください');
     return;
   }
 
+  // シャーレサイズに応じたパラメータ設定
+  let dishArea, targetCells;
+  if (dishSize === '60') {
+    dishArea = 28.26;
+    targetCells = 90000;
+  } else {
+    dishArea = 78.5;
+    targetCells = 250000;
+  }
+
   const avgValue = (value1 + value2) / 2;
   const cellCountPerMl = avgValue * 100000;
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000;
-  const volumeUl = (250000 / cellCountPerMl) * 1000;
-  const dishArea = 78.5;
+  const volumeUl = (targetCells / cellCountPerMl) * 1000;
   const cellDensityPerCm2 = cellCountPerMl / dishArea;
   const cellDensityDisplay = Math.round(cellDensityPerCm2);
   const notesInput = document.getElementById('notes-input').value || '';
@@ -365,20 +417,24 @@ async function saveCellCount() {
       count_1: value1,
       count_2: value2,
       density: cellDensityDisplay,
-      notes: notesInput
+      notes: notesInput,
+      dish_size: dishSize + 'mm'
     });
 
-    // Google Forms に送信
-    const formData = new FormData();
-    formData.append(FORM_ENTRIES.count_1, value1);
-    formData.append(FORM_ENTRIES.count_2, value2);
-    formData.append(FORM_ENTRIES.cell_count, avgValue); // 平均細胞数（×10^5）
-    formData.append(FORM_ENTRIES.density, cellDensityDisplay);
-    formData.append(FORM_ENTRIES.notes, notesInput);
+    // Google Forms に送信 (urlencoded形式にするため URLSearchParams を使用)
+    const formParams = new URLSearchParams();
+    formParams.append(FORM_ENTRIES.count_1, value1);
+    formParams.append(FORM_ENTRIES.count_2, value2);
+    formParams.append(FORM_ENTRIES.cell_count, avgValue); // 平均細胞数（×10^5）
+    formParams.append(FORM_ENTRIES.density, cellDensityDisplay);
+    formParams.append(FORM_ENTRIES.notes, notesInput);
+    if (FORM_ENTRIES.dish_size && FORM_ENTRIES.dish_size !== 'entry.XXXXXXXXX') {
+      formParams.append(FORM_ENTRIES.dish_size, dishSize + 'mm');
+    }
 
     const formResponse = await fetch(GOOGLE_FORM_URL, {
       method: 'POST',
-      body: formData,
+      body: formParams,
       mode: 'no-cors'
     });
 
@@ -400,7 +456,8 @@ async function saveCellCount() {
           counted_value_mean: avgValue,
           cell_count: cellCountPerMl,
           density: cellDensityDisplay,
-          notes: notesInput
+          notes: notesInput,
+          dish_size: dishSize + 'mm'
         })
       }
     );
@@ -430,6 +487,7 @@ window.pauseTimer = pauseTimer;
 window.resetTimer = resetTimer;
 window.autoCellCount = autoCellCount;
 window.saveCellCount = saveCellCount;
+window.handleDishSizeChange = handleDishSizeChange;
 
 // Service Worker登録
 if ('serviceWorker' in navigator) {
