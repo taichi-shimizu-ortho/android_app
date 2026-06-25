@@ -20,7 +20,7 @@ let timerInterval = null;
 let timerSeconds = 0;
 let totalTimerSeconds = 0;
 let hasUnsavedDataInSection6 = false;
-window.currentDishSize = '100'; // デフォルト: 100mm
+window.currentDishSize = '60'; // デフォルト: 60mm
 
 async function loadProtocols() {
   try {
@@ -113,7 +113,7 @@ function displaySection() {
           <p>平均計数値: <span id="avg-value"></span></p>
           <p id="cell-count-display"></p>
           <p id="cell-density-display" style="display:none;"></p>
-          <p class="volume-result"><span id="volume-label">100mm播種に必要な体積</span>: <span id="volume-value"></span> μL</p>
+          <p class="volume-result"><span id="volume-label">${window.currentDishSize}mm播種に必要な体積</span>: <span id="volume-value"></span> μL</p>
           <div class="form-group">
             <label>メモ（任意）</label>
             <textarea id="notes-input" placeholder="実験の備考などを入力" rows="2"></textarea>
