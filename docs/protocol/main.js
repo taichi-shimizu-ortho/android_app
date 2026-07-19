@@ -9,7 +9,6 @@ const FORM_ENTRIES = {
   count_1: 'entry.965089671',
   count_2: 'entry.766252459',
   cell_count: 'entry.76098497',
-  density: 'entry.1236607395',
   notes: 'entry.1858207442',
   dish_size: 'entry.1802548858'
 };
@@ -112,7 +111,6 @@ function displaySection() {
         <div id="result-display" class="result-display" style="display:none;">
           <p>平均計数値: <span id="avg-value"></span></p>
           <p id="cell-count-display"></p>
-          <p id="cell-density-display" style="display:none;"></p>
           <p class="volume-result"><span id="volume-label">${window.currentDishSize}mm播種に必要な体積</span>: <span id="volume-value"></span> μL</p>
           <div class="form-group">
             <label>メモ（任意）</label>
@@ -330,33 +328,23 @@ function autoCellCount() {
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000; // × 10^5 単位に変換
 
   // シャーレサイズに応じたパラメータ設定
-  let dishArea, targetCells, minAvgValue;
+  let targetCells, minAvgValue;
   if (dishSize === '60') {
-    dishArea = 28.26;     // cm²
-    targetCells = 90000;  // 9万個 (播種密度 ~3,200 cells/cm² を維持)
-    minAvgValue = 0.9;    // 9万個に必要な最小平均値
+    targetCells = 100000;  // 10万個
+    minAvgValue = 1.0;     // 10万個に必要な最小平均値
   } else {
-    dishArea = 78.5;      // cm²
-    targetCells = 250000; // 25万個 (播種密度 ~3,200 cells/cm² を維持)
-    minAvgValue = 2.5;    // 25万個に必要な最小平均値
+    targetCells = 277778;  // 60mmと同密度 (~3,539 cells/cm²) になる細胞数
+    minAvgValue = 2.78;    // 27.8万個に必要な最小平均値
   }
 
   // 必要な体積(uL) = 播種目標 / (細胞数/mL) × 1000
   const volumeUl = (targetCells / cellCountPerMl) * 1000;
 
-  // 密度計算 (回収時密度)
-  const cellDensityPerCm2 = cellCountPerMl / dishArea; // cells/cm²
-  const cellDensityRounded = Math.round(cellDensityPerCm2); // 四捨五入
-
   // 表示（有効数字3桁）
   document.getElementById('avg-value').textContent = avgValue.toFixed(2);
 
-  // すべてのケースで密度を表示
   document.getElementById('cell-count-display').innerHTML =
     `細胞数: ${cellCountPerMlHundredThousand.toFixed(2)} × 10<sup>5</sup> cells/mL`;
-  document.getElementById('cell-density-display').innerHTML =
-    `回収密度: ${cellDensityRounded} cells/cm²`;
-  document.getElementById('cell-density-display').style.display = 'block';
 
   // ラベルテキスト更新
   const volumeLabel = document.getElementById('volume-label');
@@ -395,28 +383,23 @@ async function saveCellCount() {
   }
 
   // シャーレサイズに応じたパラメータ設定
-  let dishArea, targetCells;
+  let targetCells;
   if (dishSize === '60') {
-    dishArea = 28.26;
-    targetCells = 90000;
+    targetCells = 100000;
   } else {
-    dishArea = 78.5;
-    targetCells = 250000;
+    targetCells = 277778;
   }
 
   const avgValue = (value1 + value2) / 2;
   const cellCountPerMl = avgValue * 100000;
   const cellCountPerMlHundredThousand = cellCountPerMl / 100000;
   const volumeUl = (targetCells / cellCountPerMl) * 1000;
-  const cellDensityPerCm2 = cellCountPerMl / dishArea;
-  const cellDensityDisplay = Math.round(cellDensityPerCm2);
   const notesInput = document.getElementById('notes-input').value || '';
 
   try {
     console.log('Saving to Google Forms and Supabase:', {
       count_1: value1,
       count_2: value2,
-      density: cellDensityDisplay,
       notes: notesInput,
       dish_size: dishSize + 'mm'
     });
@@ -426,7 +409,6 @@ async function saveCellCount() {
     formParams.append(FORM_ENTRIES.count_1, value1);
     formParams.append(FORM_ENTRIES.count_2, value2);
     formParams.append(FORM_ENTRIES.cell_count, avgValue); // 平均細胞数（×10^5）
-    formParams.append(FORM_ENTRIES.density, cellDensityDisplay);
     formParams.append(FORM_ENTRIES.notes, notesInput);
     if (FORM_ENTRIES.dish_size && FORM_ENTRIES.dish_size !== 'entry.XXXXXXXXX') {
       formParams.append(FORM_ENTRIES.dish_size, dishSize + 'mm');
@@ -455,7 +437,6 @@ async function saveCellCount() {
           count_2: value2,
           counted_value_mean: avgValue,
           cell_count: cellCountPerMl,
-          density: cellDensityDisplay,
           notes: notesInput,
           dish_size: dishSize + 'mm'
         })
