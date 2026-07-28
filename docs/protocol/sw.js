@@ -1,4 +1,4 @@
-const CACHE_NAME = 'protocol-v5';
+const CACHE_NAME = 'protocol-v6';
 const urlsToCache = [
   '/android_app/protocol/',
   '/android_app/protocol/index.html',
