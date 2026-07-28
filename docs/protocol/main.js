@@ -96,8 +96,8 @@ function displaySection() {
         <div class="form-group">
           <label>シャーレサイズ</label>
           <select id="dish-size" onchange="handleDishSizeChange()">
-            <option value="100" ${window.currentDishSize === '100' ? 'selected' : ''}>100mm (面積: 78.5 cm² / 播種目標: 25万個)</option>
-            <option value="60" ${window.currentDishSize === '60' ? 'selected' : ''}>60mm (面積: 28.26 cm² / 播種目標: 9万個)</option>
+            <option value="100" ${window.currentDishSize === '100' ? 'selected' : ''}>100mm (面積: 78.5 cm² / 播種目標: 27.8万個)</option>
+            <option value="60" ${window.currentDishSize === '60' ? 'selected' : ''}>60mm (面積: 28.26 cm² / 播種目標: 10万個)</option>
           </select>
         </div>
         <div class="form-group">
