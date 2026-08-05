@@ -21,7 +21,8 @@ jobs:
         run: |
           status=$(curl -sS -o /tmp/response.json -w '%{http_code}' \
             "$SUPABASE_URL/rest/v1/protocols?select=id&limit=1" \
-            -H "apikey: $SUPABASE_KEY")
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
 
           echo "HTTP $status"
           cat /tmp/response.json
