@@ -43,11 +43,11 @@
 
 /* ステップリスト */
 .step-list { margin-top: 20px; }
-.step-item { display: flex; align-items: flex-start; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9em; transition: 0.3s; cursor: pointer; }
-.step-item:hover { background: #f8f9fa; }
-.step-item.active { background: #e8f0fe; border-left: 6px solid #1a73e8; font-weight: bold; color: #1a73e8; }
-.step-item.completed { color: #aaa; text-decoration: line-through; background: #fafafa; }
-.step-num { width: 30px; font-weight: bold; flex-shrink: 0; padding-top: 1px; }
+.timer-container .step-item { display: flex; align-items: flex-start; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9em; transition: 0.3s; cursor: pointer; }
+.timer-container .step-item:hover { background: #f8f9fa; }
+.timer-container .step-item.active { background: #e8f0fe; border-left: 6px solid #1a73e8; font-weight: bold; color: #1a73e8; }
+.timer-container .step-item.completed { color: #aaa; text-decoration: line-through; background: #fafafa; }
+.timer-container .step-num { width: 30px; font-weight: bold; flex-shrink: 0; padding-top: 1px; }
 .note { color: #d93025; font-size: 0.8em; margin-top: 2px; }
 
 /* 通知許可バナー */

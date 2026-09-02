@@ -40,7 +40,7 @@
   margin-bottom: 20px;
 }
 
-.step-item {
+.protocol-container .step-item {
   display: block; /* Timer.cssとの競合（display: flex）を防ぐため */
   background: #f9f9f9;
   border-left: 4px solid #667eea;
@@ -49,14 +49,14 @@
   border-radius: 4px;
 }
 
-.step-item h3 {
+.protocol-container .step-item h3 {
   font-size: 1.1em;
   color: #333;
   margin-bottom: 8px;
   margin-top: 0;
 }
 
-.step-item p {
+.protocol-container .step-item p {
   color: #666;
   line-height: 1.6;
   margin-bottom: 8px;
