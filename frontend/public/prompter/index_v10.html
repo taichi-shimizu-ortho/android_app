@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#f77e58">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Prompter">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+    <title>Prompter</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #1a1a1a; 
+            padding: 0; 
+            margin: 0; 
+            color: #fff; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; /* 全体は固定 */
+        }
+
+        /* コンテンツエリアをスクロール可能に */
+        .container { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 80px 20px 150px 20px; /* 上下に余白を確保してUIとの重なりを防ぐ */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .content { width: 100%; max-width: 90vw; text-align: center; }
+        .section-title { font-size: 1.8em; font-weight: bold; color: #f77e58; margin-bottom: 20px; }
+        .section-text { font-size: 1.4em; line-height: 1.6; color: #fff; margin-bottom: 30px; white-space: pre-wrap; word-wrap: break-word; }
+
+        /* タイマー関連 */
+        .timer-bar { position: fixed; top: 0; left: 0; height: 6px; background: #f77e58; transition: width 0.1s linear; z-index: 100; }
+        .header-info { 
+            position: fixed; top: 0; left: 0; right: 0; height: 60px; 
+            background: rgba(26, 26, 26, 0.9); display: flex; 
+            justify-content: space-between; align-items: center; padding: 0 15px; z-index: 90;
+        }
+        .timer-display { font-size: 1.4em; color: #f77e58; font-weight: bold; }
+        .total-timer { font-size: 0.9em; color: #ccc; }
+        .section-counter { font-size: 1.1em; color: #999; }
+
+        /* コントロール（最前面に配置し、背景を付ける） */
+        .controls { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            display: flex; gap: 10px; justify-content: center; 
+            padding: 20px 20px 30px 20px; 
+            background: linear-gradient(transparent, #1a1a1a 30%); /* 下から文字が浮き上がるように */
+            z-index: 100;
+        }
+        button { padding: 15px 20px; font-size: 1em; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-prev { background: #444; color: #fff; }
+        .btn-start { background: #f77e58; color: white; flex: 1; }
+        .btn-next { background: #444; color: #fff; }
+        button:active { opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+<div class="timer-bar" id="timerBar"></div>
+<div class="header-info">
+    <div class="section-counter" id="sectionCounter">0/0</div>
+    <div class="total-timer" id="totalTimer">Total: 0:00</div>
+    <div class="timer-display" id="timerDisplay">0:00</div>
+</div>
+
+<div class="container">
+    <div class="content">
+        <div class="section-title" id="sectionTitle"></div>
+        <div class="section-text" id="sectionText"></div>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn-prev" onclick="previousSection()">← PREV</button>
+    <button class="btn-start" id="startBtn" onclick="togglePresentation()">START</button>
+    <button class="btn-next" onclick="nextSection()">NEXT →</button>
+</div>
+
+<script>
+const sections = [
+    { title: "Introduction", duration: 50, text: "I am Taichi Shimizu from University of Occupational and Environmental Health, Kitakyushu, Japan\n\nMy talk is focusing more about \"Relaxin Family Peptide 1 Expression in the Murine Hip Joint\"\n\nRelaxin is a peptide hormone that binds to relaxin family peptide receptor 1 (RXFP1) and induces relaxation of the pubic ligament through the production of matrix metalloproteinases (MMP-3).\n\nHowever, recent literature lacks a clear understanding of RXFP1 expression in the normal hip joint.\n\nTherefore, The purpose of this study are: To examine sex differences and pregnancy-related variations of RXFP1 in the hip joint, and to investigate the relationship between chondrocyte differentiation and RXFP1 expression." },
+    { title: "Methods", duration: 43, text: "Male and female 8-week-old mice and mice at 18 days of gestation were used. RXFP1 expression was assessed by RT-PCR, and histological assessment was performed using Hematoxylin eosin and masson trichrome staining. Immunohistochemistry was performed using antibodies against RXFP1 and SOX9（SRY-box transcription factor 9）.\n\nIn experiments using cultured cells, ATDC5 cells were induced to differentiate using ITS as a chondrogenic inducer. Nodule formation was evaluated by Alcian blue staining, and the expression of RXFP1 and SOX9 was examined by Western blotting." },
+    { title: "Results", duration: 30, text: "Histological evaluation revealed no obvious morphological differences between males and females. Immunohistochemical analysis detected RXFP1 expression in articular cartilage and the joint capsule. In addition, Double immunostaining revealed that RXFP1 colocalized with the chondrocyte marker SOX9.\n\nWestern blot analysis showed that both RXFP1 and SOX9 increased as the culture period progressed." },
+    { title: "Conclusion", duration: 15, text: "RXFP1 expression is localized in the articular cartilage and joint capsule.\n\nRXFP1 expression is upregulated according to chondrocyte differentiation. Thank you for your attention." }
+];
+
+let currentSection = 0;
+let timeRemaining = sections[0].duration;
+let overallElapsed = 0; // 総合経過時間
+let presentationActive = false;
+let timerId = null;
+const totalDuration = sections.reduce((sum, s) => sum + s.duration, 0);
+
+function renderSection() {
+    const section = sections[currentSection];
+    document.getElementById('sectionTitle').textContent = section.title;
+    document.getElementById('sectionText').textContent = section.text;
+    document.getElementById('sectionCounter').textContent = `${currentSection + 1} / ${sections.length}`;
+    timeRemaining = section.duration;
+    
+    // セクション移動時に一番上までスクロール
+    document.querySelector('.container').scrollTop = 0;
+    updateDisplay();
+}
+
+function updateDisplay() {
+    // セクション残り時間
+    const mins = Math.floor(timeRemaining / 60);
+    const secs = timeRemaining % 60;
+    document.getElementById('timerDisplay').textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+
+    // 総合経過時間
+    const oMins = Math.floor(overallElapsed / 60);
+    const oSecs = overallElapsed % 60;
+    document.getElementById('totalTimer').textContent = `Total: ${oMins}:${String(oSecs).padStart(2, '0')}`;
+
+    // プログレスバー
+    const progress = (overallElapsed / totalDuration) * 100;
+    document.getElementById('timerBar').style.width = Math.min(progress, 100) + '%';
+}
+
+function startTimer() {
+    if (timerId) clearInterval(timerId);
+    timerId = setInterval(() => {
+        timeRemaining--;
+        overallElapsed++;
+        updateDisplay();
+        
+        if (timeRemaining <= 0) {
+            if (currentSection < sections.length - 1) {
+                currentSection++;
+                renderSection();
+                // presentationActive が true ならそのまま継続
+            } else {
+                stopTimer();
+                alert("Presentation Finished!");
+            }
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerId);
+    presentationActive = false;
+    document.getElementById('startBtn').textContent = 'RESUME';
+}
+
+function togglePresentation() {
+    if (presentationActive) {
+        stopTimer();
+    } else {
+        presentationActive = true;
+        document.getElementById('startBtn').textContent = 'PAUSE';
+        startTimer();
+    }
+}
+
+function nextSection() {
+    const wasActive = presentationActive;
+    if (currentSection < sections.length - 1) {
+        // 現在のセクションの残り時間を総合経過時間に加算（スキップ分）
+        // ※厳密にやりたい場合は調整が必要ですが、ここでは単純化
+        currentSection++;
+        renderSection();
+        if (wasActive) startTimer(); // 実行中ならタイマー継続
+    }
+}
+
+function previousSection() {
+    const wasActive = presentationActive;
+    if (currentSection > 0) {
+        currentSection--;
+        renderSection();
+        if (wasActive) startTimer();
+    }
+}
+
+renderSection();
+// スワイプ操作の追加
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+const swipeThreshold = 50; // 50px以上の移動でスワイプ判定
+
+document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, false);
+
+document.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+}, false);
+
+function handleSwipe() {
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+
+    // 左右の動きが上下の動きより大きく、かつ閾値を超えている場合のみ発動
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+        if (diffX > 0) {
+            // 右スワイプ = 前へ
+            previousSection();
+        } else {
+            // 左スワイプ = 次へ
+            nextSection();
+        }
+    }
+}
+
+
+</script>
+</body>
+</html>

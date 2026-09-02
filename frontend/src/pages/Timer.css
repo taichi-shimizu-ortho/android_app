@@ -1,0 +1,56 @@
+.timer-container-wrapper {
+    background: #f0f2f5; 
+    min-height: 100vh;
+    padding: 15px; 
+    margin: 0;
+}
+.timer-container { 
+    max-width: 500px; 
+    margin: auto; 
+    background: white; 
+    padding: 20px; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    text-align: left;
+}
+.timer-container h2 { 
+    color: #1a73e8; 
+    text-align: center; 
+    font-size: 1.2em; 
+    border-bottom: 2px solid #e8f0fe; 
+    padding-bottom: 10px; 
+    margin-top: 0; 
+}
+
+/* 日タブ */
+.day-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
+.day-tab { flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; font-size: 0.9em; font-weight: bold; cursor: pointer; transition: 0.2s; text-align: center; color: #666; }
+.day-tab.active { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; }
+.day-tab:hover:not(.active) { background: #f8f9fa; }
+
+/* タイマー表示 */
+.timer-card { background: #1a73e8; color: white; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 20px; position: sticky; top: 10px; z-index: 100; }
+.timeLeft { font-size: 3.5em; font-weight: bold; font-family: monospace; }
+.currentStepName { font-size: 1em; margin-top: 5px; opacity: 0.9; }
+
+/* ボタン類 */
+.controls { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+.controls button { border: none; border-radius: 8px; padding: 12px 24px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.btn-start { background: #34a853; color: white; flex: 2; font-size: 1.1em; }
+.btn-start:disabled { background: #a8dab5; }
+.btn-skip { background: #fbbc05; color: white; flex: 1; }
+.btn-skip:disabled { background: #fce8b2; }
+
+/* ステップリスト */
+.step-list { margin-top: 20px; }
+.step-item { display: flex; align-items: flex-start; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9em; transition: 0.3s; cursor: pointer; }
+.step-item:hover { background: #f8f9fa; }
+.step-item.active { background: #e8f0fe; border-left: 6px solid #1a73e8; font-weight: bold; color: #1a73e8; }
+.step-item.completed { color: #aaa; text-decoration: line-through; background: #fafafa; }
+.step-num { width: 30px; font-weight: bold; flex-shrink: 0; padding-top: 1px; }
+.note { color: #d93025; font-size: 0.8em; margin-top: 2px; }
+
+/* 通知許可バナー */
+.notifBanner { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 10px 14px; margin-bottom: 15px; font-size: 0.85em; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.notifBanner button { background: #1a73e8; color: white; padding: 6px 14px; font-size: 0.85em; flex-shrink: 0; border: none; border-radius: 4px; cursor: pointer; }
+.notifBanner .close { background: none; color: #666; padding: 4px 8px; }
