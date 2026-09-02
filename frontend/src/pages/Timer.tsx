@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import './Timer.css';
 
 const protocols = [
@@ -181,6 +182,7 @@ export default function Timer() {
     return (
         <div className="timer-container-wrapper">
             <div className="timer-container">
+                <Link to="/" className="back-to-home">🏠 ホームへ戻る</Link>
                 <h2>IHC 二重染色</h2>
 
                 {showNotifBanner && (

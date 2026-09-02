@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import './Timer.css'; // Reusing the same CSS for timers
 
 const protocolData = {
@@ -261,6 +262,7 @@ export default function IshPalette() {
     return (
         <div className="timer-container-wrapper">
             <div className="timer-container">
+                <Link to="/" className="back-to-home">🏠 ホームへ戻る</Link>
                 <h2 style={{ color: '#9c27b0', borderBottomColor: '#f3e5f5' }}>ISHpalette® Timer</h2>
 
                 {showNotifBanner && (
