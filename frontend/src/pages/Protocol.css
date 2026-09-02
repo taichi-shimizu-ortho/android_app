@@ -41,6 +41,7 @@
 }
 
 .step-item {
+  display: block; /* Timer.cssとの競合（display: flex）を防ぐため */
   background: #f9f9f9;
   border-left: 4px solid #667eea;
   padding: 15px;
