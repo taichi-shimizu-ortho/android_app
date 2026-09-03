@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 import './Timer.css'; // Reusing the same CSS for timers
 
 const protocolData = {
@@ -279,9 +280,34 @@ export default function IshPalette() {
         }
     };
 
+    const logStepToSupabase = async (dayIdx: number, stepIdx: number) => {
+        try {
+            if (dayIdx >= protocolData.days.length || stepIdx >= protocolData.days[dayIdx].steps.length) return;
+            const step = protocolData.days[dayIdx].steps[stepIdx];
+            const now = new Date();
+            // Estimate started_at based on protocol duration. If it was paused, this is a rough estimate.
+            const startedAt = new Date(now.getTime() - (step.time_minutes * 60 * 1000));
+            
+            await supabase.from('timer_logs').insert([{
+                protocol_name: protocolData.protocol_name,
+                day_number: dayIdx + 1,
+                step_number: stepIdx + 1,
+                step_name: step.name,
+                started_at: startedAt.toISOString(),
+                completed_at: now.toISOString(),
+                notes: ''
+            }]);
+        } catch (e) {
+            console.error("Failed to log to Supabase", e);
+        }
+    };
+
     const handleNextStep = (autoStart = false) => {
         setIsRunning(false);
         setIsPaused(false);
+        
+        // Log current step before moving to next
+        logStepToSupabase(currentDayIndex, currentStepIdx);
         
         setCurrentStepIdx(prev => {
             const nextIdx = prev + 1;
