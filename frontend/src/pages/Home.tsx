@@ -11,11 +11,11 @@ export default function Home() {
           <div className="app-title">IHC Timer</div>
           <div className="app-desc">二重染色プロトコルタイマー</div>
         </Link>
-        <a href="./prompter/" className="app-card">
+        <Link to="/prompter" className="app-card">
           <div className="app-icon prompter">🎤</div>
           <div className="app-title">Prompter</div>
           <div className="app-desc">プレゼンテーション補助</div>
-        </a>
+        </Link>
         <Link to="/ish-palette" className="app-card">
           <div className="app-icon" style={{ color: '#9c27b0' }}>🧬</div>
           <div className="app-title">ISHpalette Timer</div>
