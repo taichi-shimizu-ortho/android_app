@@ -1,8 +1,9 @@
 {
+  "id": "lab-apps-prompter",
   "name": "Prompter",
   "short_name": "Prompter",
   "description": "Prompter App",
-  "start_url": "/android_app/#/prompter",
+  "start_url": "/android_app/?app=prompter#/prompter",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#f77e58",

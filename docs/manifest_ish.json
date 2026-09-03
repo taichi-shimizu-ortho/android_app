@@ -1,8 +1,9 @@
 {
+  "id": "lab-apps-ish",
   "name": "ISH Palette",
   "short_name": "ISH",
   "description": "ISH Palette App",
-  "start_url": "/android_app/#/ish-palette",
+  "start_url": "/android_app/?app=ish#/ish-palette",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#9c27b0",

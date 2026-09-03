@@ -1,8 +1,9 @@
 {
+  "id": "lab-apps-home",
   "name": "Lab Apps",
   "short_name": "LabApps",
   "description": "Lab Apps App",
-  "start_url": "/android_app/",
+  "start_url": "/android_app/?app=home",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#333333",

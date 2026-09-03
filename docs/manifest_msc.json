@@ -1,8 +1,9 @@
 {
+  "id": "lab-apps-msc",
   "name": "MSC Protocol",
   "short_name": "MSC",
   "description": "MSC Protocol App",
-  "start_url": "/android_app/#/protocol",
+  "start_url": "/android_app/?app=msc#/protocol",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1a73e8",
