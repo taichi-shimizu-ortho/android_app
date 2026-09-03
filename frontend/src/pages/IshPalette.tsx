@@ -122,6 +122,7 @@ const protocolData = {
 };
 
 const STORAGE_KEY = 'ishPaletteTimerState';
+const RECORDING_KEY = 'ishPaletteRecording';
 
 export default function IshPalette() {
     const [currentDayIndex, setCurrentDayIndex] = useState(0);
@@ -131,6 +132,18 @@ export default function IshPalette() {
     const [isPaused, setIsPaused] = useState(false);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
     
+    const [isRecording, setIsRecording] = useState(() => {
+        return localStorage.getItem(RECORDING_KEY) === 'true';
+    });
+
+    const toggleRecording = () => {
+        setIsRecording(prev => {
+            const next = !prev;
+            localStorage.setItem(RECORDING_KEY, next.toString());
+            return next;
+        });
+    };
+
     const timerRef = useRef<number | null>(null);
 
     // Load from localStorage on mount
@@ -293,6 +306,7 @@ export default function IshPalette() {
     };
 
     const logStepToSupabase = async (dayIdx: number, stepIdx: number) => {
+        if (!isRecording) return;
         try {
             if (dayIdx >= protocolData.days.length || stepIdx >= protocolData.days[dayIdx].steps.length) return;
             const step = protocolData.days[dayIdx].steps[stepIdx];
@@ -361,6 +375,35 @@ export default function IshPalette() {
             <div className="timer-container">
                 <Link to="/" className="back-to-home">🏠 ホームへ戻る</Link>
                 <h2 style={{ color: '#9c27b0', borderBottomColor: '#f3e5f5' }}>ISHpalette® Timer</h2>
+
+                <div className="record-banner" style={{
+                    background: isRecording ? '#ffebee' : '#f5f5f5',
+                    border: `1px solid ${isRecording ? '#ef5350' : '#e0e0e0'}`,
+                    padding: '12px',
+                    borderRadius: '8px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <div>
+                        {isRecording ? (
+                            <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>🔴 実験記録中... (自動保存)</span>
+                        ) : (
+                            <span style={{ color: '#666', fontSize: '0.9rem' }}>※ 記録を開始すると完了した工程が保存されます</span>
+                        )}
+                    </div>
+                    <button 
+                        onClick={toggleRecording}
+                        style={{
+                            background: isRecording ? '#d32f2f' : '#1976d2',
+                            padding: '6px 12px',
+                            fontSize: '0.9rem'
+                        }}
+                    >
+                        {isRecording ? '⏹️ 記録終了' : '▶️ 記録開始'}
+                    </button>
+                </div>
 
                 {showNotifBanner && (
                     <div className="notifBanner">
