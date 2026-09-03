@@ -1,21 +1,21 @@
 {
-  "name": "Lab Protocol Apps",
-  "short_name": "Protocols",
-  "description": "研究プロトコル・タイマーアプリ",
+  "name": "MSC Protocol",
+  "short_name": "MSC",
+  "description": "MSC Protocol App",
   "start_url": "/android_app/",
   "display": "standalone",
-  "background_color": "#f8f9fa",
-  "theme_color": "#2196F3",
+  "background_color": "#ffffff",
+  "theme_color": "#1a73e8",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "./icons/icon-192.png",
+      "src": "./icons/msc/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/icon-512.png",
+      "src": "./icons/msc/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
