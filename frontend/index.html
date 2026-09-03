@@ -2,11 +2,32 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="./icons/icon-192.png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png">
-    <link rel="manifest" href="./manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#2196F3">
+    <script>
+      (function() {
+        const hash = window.location.hash;
+        let appName = 'msc';
+        if (hash.includes('timer')) appName = 'ihc';
+        else if (hash.includes('ish-palette')) appName = 'ish';
+        
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = `./manifest_${appName}.json`;
+        document.head.appendChild(manifestLink);
+
+        const iconLink192 = document.createElement('link');
+        iconLink192.rel = 'icon';
+        iconLink192.type = 'image/png';
+        iconLink192.href = `./icons/${appName}/icon-192.png`;
+        document.head.appendChild(iconLink192);
+
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.href = `./icons/${appName}/icon-192.png`;
+        document.head.appendChild(appleIcon);
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
