@@ -241,6 +241,12 @@ export default function IshPalette() {
     };
 
     const switchDay = (dayIndex: number) => {
+        if (dayIndex === currentDayIndex) return;
+        if (isRunning || isPaused) {
+            if (!window.confirm("現在進行中（または一時停止中）のタイマーがあります。移動するとリセットされますがよろしいですか？")) {
+                return;
+            }
+        }
         setCurrentDayIndex(dayIndex);
         setCurrentStepIdx(0);
         setRemaining(protocolData.days[dayIndex].steps[0].time_minutes * 60);
@@ -252,6 +258,12 @@ export default function IshPalette() {
     };
 
     const jumpToStep = (idx: number) => {
+        if (idx === currentStepIdx) return;
+        if (isRunning || isPaused) {
+            if (!window.confirm("現在進行中（または一時停止中）のタイマーがあります。移動するとリセットされますがよろしいですか？")) {
+                return;
+            }
+        }
         setCurrentStepIdx(idx);
         setRemaining(protocolData.days[currentDayIndex].steps[idx].time_minutes * 60);
         setIsRunning(false);

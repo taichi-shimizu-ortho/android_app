@@ -86,6 +86,12 @@ export default function Timer() {
     };
 
     const switchDay = (day: number) => {
+        if (day === currentDay) return;
+        if (isRunning || isPaused) {
+            if (!window.confirm("現在進行中（または一時停止中）のタイマーがあります。移動するとリセットされますがよろしいですか？")) {
+                return;
+            }
+        }
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
         setCurrentDay(day);
@@ -96,6 +102,12 @@ export default function Timer() {
     };
 
     const jumpToStep = (idx: number) => {
+        if (idx === currentIdx) return;
+        if (isRunning || isPaused) {
+            if (!window.confirm("現在進行中（または一時停止中）のタイマーがあります。移動するとリセットされますがよろしいですか？")) {
+                return;
+            }
+        }
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
         setCurrentIdx(idx);
