@@ -26,6 +26,11 @@ export default function Home() {
           <div className="app-title">Protocol</div>
           <div className="app-desc">細胞培養プロトコル</div>
         </Link>
+        <Link to="/logs" className="app-card">
+          <div className="app-icon" style={{ color: '#333' }}>📊</div>
+          <div className="app-title">Data Logs</div>
+          <div className="app-desc">記録・履歴一覧</div>
+        </Link>
       </div>
     </div>
   );
