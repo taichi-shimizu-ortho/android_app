@@ -32,6 +32,9 @@ export default function LogsViewer() {
     const [timerLogs, setTimerLogs] = useState<TimerLog[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [editingMsc, setEditingMsc] = useState<ExperimentLog | null>(null);
+    const [editingTimer, setEditingTimer] = useState<TimerLog | null>(null);
+
     useEffect(() => {
         fetchLogs();
     }, []);
@@ -53,6 +56,59 @@ export default function LogsViewer() {
             console.error(e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const deleteLog = async (table: string, id: string) => {
+        if (!window.confirm("この記録を本当に削除しますか？")) return;
+        try {
+            const { error } = await supabase.from(table).delete().eq('id', id);
+            if (error) throw error;
+            fetchLogs();
+        } catch (e: any) {
+            alert('削除に失敗しました: ' + e.message);
+        }
+    };
+
+    const saveMscEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingMsc) return;
+        try {
+            const c1 = Number(editingMsc.count_1);
+            const c2 = Number(editingMsc.count_2);
+            const mean = (c1 + c2) / 2;
+            const cellCount = mean * 10000;
+            
+            const { error } = await supabase.from('experiment_logs').update({
+                count_1: c1,
+                count_2: c2,
+                counted_value_mean: mean,
+                cell_count: cellCount,
+                dish_size: editingMsc.dish_size,
+                notes: editingMsc.notes
+            }).eq('id', editingMsc.id);
+
+            if (error) throw error;
+            setEditingMsc(null);
+            fetchLogs();
+        } catch (e: any) {
+            alert('保存に失敗しました: ' + e.message);
+        }
+    };
+
+    const saveTimerEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingTimer) return;
+        try {
+            const { error } = await supabase.from('timer_logs').update({
+                notes: editingTimer.notes
+            }).eq('id', editingTimer.id);
+
+            if (error) throw error;
+            setEditingTimer(null);
+            fetchLogs();
+        } catch (e: any) {
+            alert('保存に失敗しました: ' + e.message);
         }
     };
 
@@ -102,12 +158,16 @@ export default function LogsViewer() {
                                 <div key={log.id} className="log-card msc-card">
                                     <div className="log-card-header">
                                         <span className="log-date">{formatDate(log.logged_at)}</span>
-                                        <span className="log-dish">{log.dish_size}</span>
+                                        <div className="log-actions">
+                                            <button onClick={() => setEditingMsc(log)}>✏️</button>
+                                            <button onClick={() => deleteLog('experiment_logs', log.id)}>🗑️</button>
+                                        </div>
                                     </div>
                                     <div className="log-card-body">
                                         <div className="log-stat">
                                             <span className="label">濃度:</span>
                                             <span className="val">{(log.cell_count / 100000).toFixed(2)} × 10⁵ cells/mL</span>
+                                            <span className="log-dish" style={{marginLeft: 8}}>{log.dish_size}</span>
                                         </div>
                                         <div className="log-sub">
                                             <span>生データ: {log.count_1}, {log.count_2} (平均: {log.counted_value_mean.toFixed(1)})</span>
@@ -127,12 +187,16 @@ export default function LogsViewer() {
                                 <div key={log.id} className="log-card timer-card">
                                     <div className="log-card-header">
                                         <span className="log-date">{formatDate(log.created_at)}</span>
-                                        <span className="log-protocol">{log.protocol_name}</span>
+                                        <div className="log-actions">
+                                            <button onClick={() => setEditingTimer(log)}>✏️</button>
+                                            <button onClick={() => deleteLog('timer_logs', log.id)}>🗑️</button>
+                                        </div>
                                     </div>
                                     <div className="log-card-body">
                                         <div className="log-stat">
                                             <span className="label">Day {log.day_number} - Step {log.step_number}:</span>
                                             <span className="val">{log.step_name}</span>
+                                            <span className="log-protocol" style={{marginLeft: 8}}>{log.protocol_name}</span>
                                         </div>
                                         <div className="log-sub">
                                             <span>開始: {formatTimeOnly(log.started_at)}</span>
@@ -146,6 +210,55 @@ export default function LogsViewer() {
                     </div>
                 )}
             </div>
+
+            {/* Edit Modals */}
+            {editingMsc && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3>MSC記録の編集</h3>
+                        <form onSubmit={saveMscEdit}>
+                            <div className="form-group">
+                                <label>カウント1</label>
+                                <input type="number" step="0.1" required value={editingMsc.count_1} onChange={e => setEditingMsc({...editingMsc, count_1: Number(e.target.value)})} />
+                            </div>
+                            <div className="form-group">
+                                <label>カウント2</label>
+                                <input type="number" step="0.1" required value={editingMsc.count_2} onChange={e => setEditingMsc({...editingMsc, count_2: Number(e.target.value)})} />
+                            </div>
+                            <div className="form-group">
+                                <label>ディッシュサイズ</label>
+                                <input type="text" value={editingMsc.dish_size || ''} onChange={e => setEditingMsc({...editingMsc, dish_size: e.target.value})} />
+                            </div>
+                            <div className="form-group">
+                                <label>メモ (Notes)</label>
+                                <textarea value={editingMsc.notes || ''} onChange={e => setEditingMsc({...editingMsc, notes: e.target.value})}></textarea>
+                            </div>
+                            <div className="modal-actions">
+                                <button type="button" onClick={() => setEditingMsc(null)} className="btn-cancel">キャンセル</button>
+                                <button type="submit" className="btn-save">保存</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {editingTimer && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3>タイマー記録の編集</h3>
+                        <form onSubmit={saveTimerEdit}>
+                            <div className="form-group">
+                                <label>メモ (Notes)</label>
+                                <textarea value={editingTimer.notes || ''} onChange={e => setEditingTimer({...editingTimer, notes: e.target.value})} placeholder="この工程に関するメモを追加"></textarea>
+                            </div>
+                            <div className="modal-actions">
+                                <button type="button" onClick={() => setEditingTimer(null)} className="btn-cancel">キャンセル</button>
+                                <button type="submit" className="btn-save">保存</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
