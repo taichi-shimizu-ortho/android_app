@@ -1,13 +1,17 @@
-const CACHE_NAME = 'app-v8';
+const CACHE_NAME = 'app-v9';
 const urlsToCache = [
   '/android_app/',
   '/android_app/index.html',
+  '/android_app/manifest_home.json',
   '/android_app/manifest_msc.json',
   '/android_app/manifest_ihc.json',
   '/android_app/manifest_ish.json',
+  '/android_app/manifest_prompter.json',
+  '/android_app/icons/home/icon-192.png',
   '/android_app/icons/msc/icon-192.png',
   '/android_app/icons/ihc/icon-192.png',
-  '/android_app/icons/ish/icon-192.png'
+  '/android_app/icons/ish/icon-192.png',
+  '/android_app/icons/prompter/icon-192.png'
 ];
 
 self.addEventListener('install', event => {

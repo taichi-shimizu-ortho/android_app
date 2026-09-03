@@ -7,9 +7,11 @@
     <script>
       (function() {
         const hash = window.location.hash;
-        let appName = 'msc';
-        if (hash.includes('timer')) appName = 'ihc';
+        let appName = 'home';
+        if (hash.includes('protocol')) appName = 'msc';
+        else if (hash.includes('timer')) appName = 'ihc';
         else if (hash.includes('ish-palette')) appName = 'ish';
+        else if (hash.includes('prompter')) appName = 'prompter';
         
         const manifestLink = document.createElement('link');
         manifestLink.rel = 'manifest';
