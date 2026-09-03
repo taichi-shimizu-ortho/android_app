@@ -120,6 +120,8 @@ const protocolData = {
   ]
 };
 
+const STORAGE_KEY = 'ishPaletteTimerState';
+
 export default function IshPalette() {
     const [currentDayIndex, setCurrentDayIndex] = useState(0);
     const [currentStepIdx, setCurrentStepIdx] = useState(0);
@@ -130,6 +132,77 @@ export default function IshPalette() {
     
     const timerRef = useRef<number | null>(null);
 
+    // Load from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setCurrentDayIndex(parsed.day ?? 0);
+                setCurrentStepIdx(parsed.step ?? 0);
+                
+                if (parsed.endTime) {
+                    const now = Date.now();
+                    if (parsed.endTime > now) {
+                        setRemaining(Math.ceil((parsed.endTime - now) / 1000));
+                        setIsRunning(true);
+                        setIsPaused(false);
+                    } else {
+                        setRemaining(0);
+                        setIsRunning(false);
+                        setIsPaused(false);
+                    }
+                } else if (parsed.pausedRemaining !== null) {
+                    setRemaining(parsed.pausedRemaining);
+                    setIsRunning(false);
+                    setIsPaused(true);
+                } else {
+                    setRemaining(protocolData.days[parsed.day ?? 0].steps[parsed.step ?? 0].time_minutes * 60);
+                }
+            } catch (e) {
+                console.error('Failed to parse saved state', e);
+            }
+        }
+    }, []);
+
+    // Start timer interval automatically if it's running after state load or startTimer call
+    useEffect(() => {
+        if (isRunning && remaining > 0) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            // Calculate endTime based on current remaining time to prevent drift
+            const endTime = Date.now() + remaining * 1000;
+            
+            // Save to localStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                day: currentDayIndex,
+                step: currentStepIdx,
+                endTime: endTime,
+                pausedRemaining: null
+            }));
+
+            timerRef.current = window.setInterval(() => {
+                const newRemaining = Math.ceil((endTime - Date.now()) / 1000);
+                if (newRemaining <= 0) {
+                    setRemaining(0);
+                    if (timerRef.current) clearInterval(timerRef.current);
+                    timerRef.current = null;
+                    setIsRunning(false);
+                    setIsPaused(false);
+                    const stepName = protocolData.days[currentDayIndex].steps[currentStepIdx]?.name || '';
+                    playNotification(stepName);
+                    handleNextStep(true);
+                } else {
+                    setRemaining(newRemaining);
+                }
+            }, 200);
+        }
+        
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [isRunning, currentDayIndex, currentStepIdx]); // Depend on isRunning and indices to restart effect when they change
+
+    // Request notification banner
     useEffect(() => {
         if ('Notification' in window && Notification.permission === 'default') {
             setShowNotifBanner(true);
@@ -167,69 +240,46 @@ export default function IshPalette() {
     };
 
     const switchDay = (dayIndex: number) => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = null;
         setCurrentDayIndex(dayIndex);
         setCurrentStepIdx(0);
         setRemaining(protocolData.days[dayIndex].steps[0].time_minutes * 60);
         setIsRunning(false);
         setIsPaused(false);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            day: dayIndex, step: 0, endTime: null, pausedRemaining: null
+        }));
     };
 
     const jumpToStep = (idx: number) => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = null;
         setCurrentStepIdx(idx);
         setRemaining(protocolData.days[currentDayIndex].steps[idx].time_minutes * 60);
         setIsRunning(false);
         setIsPaused(false);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            day: currentDayIndex, step: idx, endTime: null, pausedRemaining: null
+        }));
     };
 
     const toggleTimer = () => {
         if (isRunning) {
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-            }
+            // Pause
             setIsRunning(false);
             setIsPaused(true);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                day: currentDayIndex, step: currentStepIdx, endTime: null, pausedRemaining: remaining
+            }));
         } else {
-            startTimer();
-        }
-    };
-
-    const startTimer = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (remaining <= 0) {
-            handleNextStep();
-            return;
-        }
-        setIsRunning(true);
-        setIsPaused(false);
-        const endTime = Date.now() + remaining * 1000;
-        
-        timerRef.current = window.setInterval(() => {
-            const newRemaining = Math.ceil((endTime - Date.now()) / 1000);
-            if (newRemaining <= 0) {
-                setRemaining(0);
-                if (timerRef.current) clearInterval(timerRef.current);
-                timerRef.current = null;
-                setIsRunning(false);
-                setIsPaused(false);
-                const stepName = protocolData.days[currentDayIndex].steps[currentStepIdx]?.name || '';
-                playNotification(stepName);
-                handleNextStep(true);
-            } else {
-                setRemaining(newRemaining);
+            // Start
+            if (remaining <= 0) {
+                handleNextStep();
+                return;
             }
-        }, 200);
+            setIsRunning(true);
+            setIsPaused(false);
+        }
     };
 
     const handleNextStep = (autoStart = false) => {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-        }
         setIsRunning(false);
         setIsPaused(false);
         
@@ -237,12 +287,21 @@ export default function IshPalette() {
             const nextIdx = prev + 1;
             const currentDaySteps = protocolData.days[currentDayIndex].steps;
             if (nextIdx < currentDaySteps.length) {
-                setRemaining(currentDaySteps[nextIdx].time_minutes * 60);
-                if (autoStart && currentDaySteps[nextIdx].time_minutes > 0) {
-                    setTimeout(() => startTimer(), 0);
+                const nextRemaining = currentDaySteps[nextIdx].time_minutes * 60;
+                setRemaining(nextRemaining);
+                
+                if (autoStart && nextRemaining > 0) {
+                    setTimeout(() => setIsRunning(true), 0);
+                } else {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        day: currentDayIndex, step: nextIdx, endTime: null, pausedRemaining: null
+                    }));
                 }
             } else {
                 setRemaining(0);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    day: currentDayIndex, step: nextIdx, endTime: null, pausedRemaining: null
+                }));
             }
             return nextIdx;
         });

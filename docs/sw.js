@@ -1,11 +1,10 @@
-const CACHE_NAME = 'protocol-v6';
+const CACHE_NAME = 'app-v7';
 const urlsToCache = [
-  '/android_app/protocol/',
-  '/android_app/protocol/index.html',
-  '/android_app/protocol/main.js',
-  '/android_app/protocol/manifest.json',
-  '/android_app/protocol/icons/icon-192.png',
-  '/android_app/protocol/icons/icon-512.png'
+  '/android_app/',
+  '/android_app/index.html',
+  '/android_app/manifest.json',
+  '/android_app/icons/icon-192.png',
+  '/android_app/icons/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -35,41 +34,40 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // chrome-extension リクエストはスキップ
   if (event.request.url.startsWith('chrome-extension://')) {
     return;
   }
 
-  // Supabaseへのリクエストはネットワーク優先
-  if (event.request.url.includes('supabase')) {
+  // Network first for Supabase
+  if (event.request.url.includes('supabase.co')) {
     event.respondWith(
-      fetch(event.request)
-        .then(response => response)
-        .catch(() => caches.match(event.request))
+      fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // その他のリクエストはキャッシュ優先
+  // Network first for everything else (to ensure getting the latest Vite assets),
+  // fallback to cache if offline.
   event.respondWith(
-    caches.match(event.request).then(response => {
-      if (response) {
+    fetch(event.request).then(response => {
+      if (!response || response.status !== 200 || response.type !== 'basic') {
         return response;
       }
-      return fetch(event.request).then(response => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
-        if (event.request.method === 'GET' && !event.request.url.includes('chrome-extension')) {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache).catch(() => {});
-          });
-        }
-        return response;
-      });
+      if (event.request.method === 'GET' && !event.request.url.includes('chrome-extension')) {
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache).catch(() => {});
+        });
+      }
+      return response;
     }).catch(() => {
-      return caches.match('/android_app/protocol/index.html');
+      return caches.match(event.request).then(response => {
+        if (response) return response;
+        // fallback to index.html if navigating
+        if (event.request.mode === 'navigate') {
+          return caches.match('/android_app/index.html');
+        }
+      });
     })
   );
 });
