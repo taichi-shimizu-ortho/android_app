@@ -5,7 +5,7 @@ import './LogsViewer.css';
 
 interface ExperimentLog {
     id: string;
-    created_at: string;
+    logged_at: string;
     count_1: number;
     count_2: number;
     counted_value_mean: number;
@@ -40,10 +40,13 @@ export default function LogsViewer() {
         setLoading(true);
         try {
             const [mscRes, timerRes] = await Promise.all([
-                supabase.from('experiment_logs').select('*').order('created_at', { ascending: false }).limit(50),
+                supabase.from('experiment_logs').select('*').order('logged_at', { ascending: false }).limit(50),
                 supabase.from('timer_logs').select('*').order('created_at', { ascending: false }).limit(50)
             ]);
             
+            if (mscRes.error) console.error('Error fetching msc logs:', mscRes.error);
+            if (timerRes.error) console.error('Error fetching timer logs:', timerRes.error);
+
             if (mscRes.data) setMscLogs(mscRes.data);
             if (timerRes.data) setTimerLogs(timerRes.data);
         } catch (e) {
@@ -98,7 +101,7 @@ export default function LogsViewer() {
                             mscLogs.map(log => (
                                 <div key={log.id} className="log-card msc-card">
                                     <div className="log-card-header">
-                                        <span className="log-date">{formatDate(log.created_at)}</span>
+                                        <span className="log-date">{formatDate(log.logged_at)}</span>
                                         <span className="log-dish">{log.dish_size}</span>
                                     </div>
                                     <div className="log-card-body">
