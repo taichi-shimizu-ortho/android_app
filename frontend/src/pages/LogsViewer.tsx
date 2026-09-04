@@ -101,6 +101,9 @@ export default function LogsViewer() {
         if (!editingTimer) return;
         try {
             const { error } = await supabase.from('timer_logs').update({
+                step_name: editingTimer.step_name,
+                started_at: editingTimer.started_at || null,
+                completed_at: editingTimer.completed_at || null,
                 notes: editingTimer.notes
             }).eq('id', editingTimer.id);
 
@@ -110,6 +113,19 @@ export default function LogsViewer() {
         } catch (e: any) {
             alert('保存に失敗しました: ' + e.message);
         }
+    };
+
+    const toDatetimeLocal = (isoStr?: string) => {
+        if (!isoStr) return '';
+        const d = new Date(isoStr);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 16);
+    };
+
+    const handleDatetimeChange = (field: 'started_at' | 'completed_at', val: string) => {
+        if (!editingTimer) return;
+        const iso = val ? new Date(val).toISOString() : '';
+        setEditingTimer({ ...editingTimer, [field]: iso });
     };
 
     const formatDate = (isoStr: string) => {
@@ -247,6 +263,18 @@ export default function LogsViewer() {
                     <div className="modal-content">
                         <h3>タイマー記録の編集</h3>
                         <form onSubmit={saveTimerEdit}>
+                            <div className="form-group">
+                                <label>工程名</label>
+                                <input type="text" value={editingTimer.step_name || ''} onChange={e => setEditingTimer({...editingTimer, step_name: e.target.value})} />
+                            </div>
+                            <div className="form-group">
+                                <label>開始時刻</label>
+                                <input type="datetime-local" value={toDatetimeLocal(editingTimer.started_at)} onChange={e => handleDatetimeChange('started_at', e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label>終了時刻</label>
+                                <input type="datetime-local" value={toDatetimeLocal(editingTimer.completed_at)} onChange={e => handleDatetimeChange('completed_at', e.target.value)} />
+                            </div>
                             <div className="form-group">
                                 <label>メモ (Notes)</label>
                                 <textarea value={editingTimer.notes || ''} onChange={e => setEditingTimer({...editingTimer, notes: e.target.value})} placeholder="この工程に関するメモを追加"></textarea>
