@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Link } from 'react-router-dom';
+
 import './Protocol.css';
 
 // Types
@@ -252,7 +252,7 @@ export default function Protocol() {
 
   return (
     <div className="protocol-container">
-      <Link to="/" className="back-to-home">🏠 ホームへ戻る</Link>
+      <a href="?app=home#/" className="back-to-home">🏠 ホームへ戻る</a>
       <div className="navigation-buttons top-nav">
         <button onClick={handlePrev} disabled={currentSectionIndex === 0}>← 前へ</button>
         <button onClick={handleNext} disabled={currentSectionIndex === sections.length - 1}>次へ →</button>

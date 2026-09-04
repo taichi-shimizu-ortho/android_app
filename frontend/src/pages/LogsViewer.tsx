@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+
 import { supabase } from '../supabaseClient';
 import './LogsViewer.css';
 
@@ -129,7 +129,7 @@ export default function LogsViewer() {
     return (
         <div className="logs-container">
             <header className="logs-header">
-                <Link to="/" className="back-link">🏠 戻る</Link>
+                <a href="?app=home#/" className="back-link">🏠 戻る</a>
                 <h2>データ履歴 (Logs)</h2>
             </header>
 
