@@ -103,8 +103,7 @@ export default function LogsViewer() {
             const { error } = await supabase.from('timer_logs').update({
                 step_name: editingTimer.step_name,
                 started_at: editingTimer.started_at || null,
-                completed_at: editingTimer.completed_at || null,
-                notes: editingTimer.notes
+                completed_at: editingTimer.completed_at || null
             }).eq('id', editingTimer.id);
 
             if (error) throw error;
@@ -218,7 +217,6 @@ export default function LogsViewer() {
                                             <span>開始: {formatTimeOnly(log.started_at)}</span>
                                             <span style={{ marginLeft: 10 }}>終了: {formatTimeOnly(log.completed_at)}</span>
                                         </div>
-                                        {log.notes && <div className="log-notes">📝 {log.notes}</div>}
                                     </div>
                                 </div>
                             ))
@@ -274,10 +272,6 @@ export default function LogsViewer() {
                             <div className="form-group">
                                 <label>終了時刻</label>
                                 <input type="datetime-local" value={toDatetimeLocal(editingTimer.completed_at)} onChange={e => handleDatetimeChange('completed_at', e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label>メモ (Notes)</label>
-                                <textarea value={editingTimer.notes || ''} onChange={e => setEditingTimer({...editingTimer, notes: e.target.value})} placeholder="この工程に関するメモを追加"></textarea>
                             </div>
                             <div className="modal-actions">
                                 <button type="button" onClick={() => setEditingTimer(null)} className="btn-cancel">キャンセル</button>
