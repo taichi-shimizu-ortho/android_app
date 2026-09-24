@@ -102,7 +102,7 @@ export default function Prompter() {
             <div className="timer-bar" style={{ width: `${progress}%` }}></div>
             
             <div className="header-info">
-                <a href="?app=home#/" className="back-to-home-prompter">🏠 ホームへ戻る</a>
+                <a href="/android_app/home/#/" className="back-to-home-prompter">🏠 ホームへ戻る</a>
                 <div className="section-counter">{currentSection + 1} / {sections.length}</div>
                 <div className="total-timer">Total: {oMins}:{String(oSecs).padStart(2, '0')}</div>
                 <div className="timer-display">{mins}:{String(secs).padStart(2, '0')}</div>

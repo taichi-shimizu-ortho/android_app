@@ -1,7 +1,12 @@
-const CACHE_NAME = 'app-v9';
+const CACHE_NAME = 'app-v10';
 const urlsToCache = [
   '/android_app/',
   '/android_app/index.html',
+  '/android_app/home/',
+  '/android_app/msc/',
+  '/android_app/ihc/',
+  '/android_app/ish/',
+  '/android_app/prompter/',
   '/android_app/manifest_home.json',
   '/android_app/manifest_msc.json',
   '/android_app/manifest_ihc.json',
@@ -70,9 +75,10 @@ self.addEventListener('fetch', event => {
     }).catch(() => {
       return caches.match(event.request).then(response => {
         if (response) return response;
-        // fallback to index.html if navigating
+        // fallback to the app's own index.html if navigating
         if (event.request.mode === 'navigate') {
-          return caches.match('/android_app/index.html');
+          const dir = new URL(event.request.url).pathname.replace(/[^/]*$/, '');
+          return caches.match(dir).then(res => res || caches.match('/android_app/home/'));
         }
       });
     })

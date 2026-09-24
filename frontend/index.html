@@ -5,29 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#2196F3">
     <script>
+      // 各アプリは /android_app/<app>/ という別ディレクトリで配信する。
+      // Android(Chrome) は manifest の scope（パス）単位でインストール済み判定をするため、
+      // クエリ(?app=) やハッシュ(#/) では別アプリとして扱われない。
       (function() {
-        const hash = window.location.hash;
-        const search = window.location.search;
-        let appName = 'home';
-        if (search.includes('app=msc') || hash.includes('protocol')) appName = 'msc';
-        else if (search.includes('app=ihc') || hash.includes('timer')) appName = 'ihc';
-        else if (search.includes('app=ish') || hash.includes('ish-palette')) appName = 'ish';
-        else if (search.includes('app=prompter') || hash.includes('prompter')) appName = 'prompter';
-        
+        const BASE = '/android_app/';
+        const APPS = ['home', 'msc', 'ihc', 'ish', 'prompter'];
+        const match = window.location.pathname.match(/\/([a-z]+)\/(?:index\.html)?$/);
+        let appName = match && APPS.includes(match[1]) ? match[1] : null;
+
+        if (!appName) {
+          // 旧URL (/android_app/?app=ish#/ish-palette など) からの互換リダイレクト
+          const hash = window.location.hash;
+          const search = window.location.search;
+          let legacy = 'home';
+          if (search.includes('app=msc') || hash.includes('protocol')) legacy = 'msc';
+          else if (search.includes('app=ihc') || hash.includes('timer')) legacy = 'ihc';
+          else if (search.includes('app=ish') || hash.includes('ish-palette')) legacy = 'ish';
+          else if (search.includes('app=prompter') || hash.includes('prompter')) legacy = 'prompter';
+          window.location.replace(BASE + legacy + '/' + hash);
+          return;
+        }
+
+        window.__APP_NAME__ = appName;
+
         const manifestLink = document.createElement('link');
         manifestLink.rel = 'manifest';
-        manifestLink.href = `./manifest_${appName}.json`;
+        manifestLink.href = BASE + 'manifest_' + appName + '.json';
         document.head.appendChild(manifestLink);
 
         const iconLink192 = document.createElement('link');
         iconLink192.rel = 'icon';
         iconLink192.type = 'image/png';
-        iconLink192.href = `./icons/${appName}/icon-192.png`;
+        iconLink192.href = BASE + 'icons/' + appName + '/icon-192.png';
         document.head.appendChild(iconLink192);
 
         const appleIcon = document.createElement('link');
         appleIcon.rel = 'apple-touch-icon';
-        appleIcon.href = `./icons/${appName}/icon-192.png`;
+        appleIcon.href = BASE + 'icons/' + appName + '/icon-192.png';
         document.head.appendChild(appleIcon);
       })();
     </script>
@@ -42,7 +57,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(err => {
+          navigator.serviceWorker.register('/android_app/sw.js', { scope: '/android_app/' }).catch(err => {
             console.log('ServiceWorker registration failed: ', err);
           });
         });

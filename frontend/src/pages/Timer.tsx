@@ -194,7 +194,7 @@ export default function Timer() {
     return (
         <div className="timer-container-wrapper">
             <div className="timer-container">
-                <a href="?app=home#/" className="back-to-home">🏠 ホームへ戻る</a>
+                <a href="/android_app/home/#/" className="back-to-home">🏠 ホームへ戻る</a>
                 <h2>IHC 二重染色</h2>
 
                 {showNotifBanner && (

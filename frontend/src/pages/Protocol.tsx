@@ -252,7 +252,7 @@ export default function Protocol() {
 
   return (
     <div className="protocol-container">
-      <a href="?app=home#/" className="back-to-home">🏠 ホームへ戻る</a>
+      <a href="/android_app/home/#/" className="back-to-home">🏠 ホームへ戻る</a>
       <div className="navigation-buttons top-nav">
         <button onClick={handlePrev} disabled={currentSectionIndex === 0}>← 前へ</button>
         <button onClick={handleNext} disabled={currentSectionIndex === sections.length - 1}>次へ →</button>

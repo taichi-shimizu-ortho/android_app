@@ -144,7 +144,7 @@ export default function LogsViewer() {
     return (
         <div className="logs-container">
             <header className="logs-header">
-                <a href="?app=home#/" className="back-link">🏠 戻る</a>
+                <a href="/android_app/home/#/" className="back-link">🏠 戻る</a>
                 <h2>データ履歴 (Logs)</h2>
             </header>
 

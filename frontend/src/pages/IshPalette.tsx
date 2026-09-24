@@ -373,7 +373,7 @@ export default function IshPalette() {
     return (
         <div className="timer-container-wrapper">
             <div className="timer-container">
-                <a href="?app=home#/" className="back-to-home">🏠 ホームへ戻る</a>
+                <a href="/android_app/home/#/" className="back-to-home">🏠 ホームへ戻る</a>
                 <h2 style={{ color: '#9c27b0', borderBottomColor: '#f3e5f5' }}>ISHpalette® Timer</h2>
 
                 <div className="record-banner" style={{
