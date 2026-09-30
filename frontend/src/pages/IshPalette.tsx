@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import './Timer.css'; // Reusing the same CSS for timers
 
+// num はメーカープロトコル (ISHpalette® Short hairpin amplifier) の手順番号。
+// 繰り返し洗浄など 1 手順を複数タイマーに分けた場合は同じ番号を共有する。
 const protocolData = {
   "protocol_name": "ISHpalette",
   "days": [
@@ -11,39 +13,46 @@ const protocolData = {
       "title": "1日目",
       "steps": [
         {
-          "name": "切片の準備",
-          "time_minutes": 0,
-          "description": "パラフィン切片の場合、脱パラフィン・脱キシレン・浸水処理を行いPBSで洗浄します。賦活化処理や高熱処理は不要です。"
+          "num": 1,
+          "name": "切片の準備 (PBS)",
+          "time_minutes": 5,
+          "description": "凍結組織切片を乗せたスライドを用意し、PBS に室温で浸しコンパウンド等を除去する。"
         },
         {
+          "num": 2,
           "name": "脱脂および透過処理 (メタノール)",
           "time_minutes": 10,
           "description": "メタノールにスライドを室温で浸し細胞膜の脱脂および透過処理を行う。"
         },
         {
+          "num": 3,
           "name": "洗浄 (PBST) 1/2",
           "time_minutes": 5,
           "description": "PBSTにスライドを室温で浸し洗浄する。"
         },
         {
+          "num": 3,
           "name": "洗浄 (PBST) 2/2",
           "time_minutes": 5,
           "description": "PBSTにスライドを室温で浸し洗浄する。"
         },
         {
+          "num": 4,
           "name": "プレハイブリダイゼーション",
           "time_minutes": 5,
-          "description": "室温に戻した Hybridization バッファーを100µL ずつ滴下し、パラフィルムをかぶせて湿潤箱で室温静置。"
+          "description": "室温に戻した Hybridization バッファーを切片一つ一つ覆うように100µL ずつ滴下し、パラフィルムを空気が入らないようにかぶせて湿潤箱で室温静置。"
         },
         {
+          "num": 5,
           "name": "ターゲットプロ―ブ入りHybridization液の準備",
           "time_minutes": 0,
-          "description": "プロ―ブ混合液1µMをHybridizationバッファー100µLに対し2µL加える。95℃ 3 分間の熱変性を行い、攪拌して室温で静置。"
+          "description": "Hybridizationバッファーは融解・攪拌しておく。プロ―ブ混合液1µMをHybridizationバッファー100µLに対し2µL加える(Final 約20nM)。95℃ 3 分間の熱変性を行い、攪拌して室温で静置。複数遺伝子の場合はすべてのプローブを同一バッファーに混合。(事前に調製も可)"
         },
         {
-          "name": "Hybridization (37℃)",
+          "num": 6,
+          "name": "Hybridization (37℃ overnight)",
           "time_minutes": 0,
-          "description": "プロ―ブ Hybridization 液を滴下し、パラフィルムをかぶせる。湿潤箱に入れ37℃で一晩静置する。翌日の洗浄用 0.5×SSCT を一緒に 37℃に入れて保温しておく。"
+          "description": "余分な液体を除き、プロ―ブ Hybridization 液を100µL ずつ滴下し、パラフィルムをかぶせる(スライドからはみ出さないサイズに)。湿潤箱に入れ37℃で一晩静置する。翌日の洗浄用 0.5×SSCT を一緒に 37℃に入れて保温しておく。"
         }
       ]
     },
@@ -52,69 +61,82 @@ const protocolData = {
       "title": "2日目",
       "steps": [
         {
+          "num": 7,
           "name": "ヘアピンDNAの熱処理",
           "time_minutes": 60,
-          "description": "H1とH2を混ぜずに別々にサーマルサイクラーで熱処理。95℃ 2分 → 65℃まで徐冷(15分) → 25℃まで徐冷(40分)。"
+          "description": "必要量を計算(2µL必要なら3µLを熱処理)。H1とH2を混ぜずに別々のPCR tubeでサーマルサイクラー処理。95℃ 2分 → 65℃まで徐冷(15分) → 25℃まで徐冷(40分)。熱処理中に 8, 9, 10 を行う。"
         },
         {
+          "num": 8,
           "name": "Amplificationバッファーの準備",
           "time_minutes": 30,
-          "description": "冷蔵庫から出し、室温で静置する。室温に戻ったら十分に攪拌する。"
+          "description": "冷蔵庫から出し、室温で30分以上静置する(この間に 9, 10 を行う)。室温に戻ったら十分に攪拌する。濁りはミセル化によるもので問題なし。"
         },
         {
+          "num": 9,
           "name": "洗浄 (0.5×SSCT, 37℃) 1/3",
           "time_minutes": 10,
           "description": "パラフィルムを剥がし、予め温めておいた 37℃の 0.5×SSCT で洗浄する。"
         },
         {
+          "num": 9,
           "name": "洗浄 (0.5×SSCT, 37℃) 2/3",
           "time_minutes": 10,
           "description": "37℃の 0.5×SSCT で洗浄する。"
         },
         {
+          "num": 9,
           "name": "洗浄 (0.5×SSCT, 37℃) 3/3",
           "time_minutes": 10,
           "description": "37℃の 0.5×SSCT で洗浄する。"
         },
         {
+          "num": 10,
           "name": "プレHCR (Amplificationバッファー)",
           "time_minutes": 5,
-          "description": "パップペンで組織の周りを囲い、室温に戻したAmplificationバッファーを乗せ、湿潤箱で室温(または25℃)で静置。"
+          "description": "パップペンで組織の周りを囲い、室温に戻したAmplificationバッファーを乗せ、湿潤箱で室温(または25℃)で5分以上静置。"
         },
         {
+          "num": 11,
           "name": "HCR反応液の作成",
           "time_minutes": 0,
-          "description": "Amplificationバッファー100µLにH1およびH2をそれぞれ2µLずつ加え、vortexでよく混合する。核染色が必要な場合は一緒に混合。"
+          "description": "Amplificationバッファー100µLにH1およびH2をスライド1枚あたりそれぞれ2µLずつ加え(チップは交換)、vortex 3秒×3回でよく混合する。核染色が必要な場合は一緒に混合(Hoechst Final 1µg/mL)。"
         },
         {
+          "num": 12,
           "name": "増感 HCR (25℃)",
           "time_minutes": 120,
-          "description": "反応液を切片に滴下し、スライドを傾けてよく混合する。湿潤箱で25℃(または室温)で2時間静置。(30分に1回以上混ぜる)"
+          "description": "余分な液体を除き、反応液を混ぜてから可能な限り早く切片に滴下し、スライドを傾けてよく混合する。湿潤箱で25℃(または室温)で静置。反応時間は手順11で混ぜ始めてから2時間以内。(30分に1回以上傾けて混ぜる)"
         },
         {
+          "num": 13,
           "name": "洗浄 (PBST, 37℃) 1/3",
           "time_minutes": 10,
           "description": "PBSTにスライドを浸し、37℃で洗浄する。"
         },
         {
+          "num": 13,
           "name": "洗浄 (PBST, 37℃) 2/3",
           "time_minutes": 10,
           "description": "PBSTにスライドを浸し、37℃で洗浄する。"
         },
         {
+          "num": 13,
           "name": "洗浄 (PBST, 37℃) 3/3",
           "time_minutes": 10,
           "description": "PBSTにスライドを浸し、37℃で洗浄する。"
         },
         {
+          "num": 13,
           "name": "洗浄 (PBS, 室温)",
           "time_minutes": 5,
-          "description": "PBSにスライドを浸し、室温で洗浄する。"
+          "description": "PBSにスライドを浸し、室温で5分間以上洗浄する。"
         },
         {
+          "num": 14,
           "name": "封入",
           "time_minutes": 0,
-          "description": "蛍光退色防止の封入剤で封入し、観察まで4℃で保存。"
+          "description": "蛍光退色防止の封入剤で封入し、観察および撮影まで4℃で保存(1週間程度は観察可能)。"
         }
       ]
     }
@@ -317,7 +339,7 @@ export default function IshPalette() {
             await supabase.from('timer_logs').insert([{
                 protocol_name: protocolData.protocol_name,
                 day_number: dayIdx + 1,
-                step_number: stepIdx + 1,
+                step_number: step.num,
                 step_name: step.name,
                 started_at: startedAt.toISOString(),
                 completed_at: now.toISOString(),
@@ -449,7 +471,7 @@ export default function IshPalette() {
 
                         return (
                             <div key={i} className={className} onClick={() => jumpToStep(i)} style={i === currentStepIdx ? { borderLeftColor: '#9c27b0', color: '#9c27b0', background: '#f3e5f5' } : {}}>
-                                <div className="step-num">{i + 1}</div>
+                                <div className="step-num">{step.num}</div>
                                 <div>
                                     <div style={{ fontWeight: 'bold' }}>
                                         {step.name}
