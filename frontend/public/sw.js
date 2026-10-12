@@ -1,4 +1,4 @@
-const CACHE_NAME = 'app-v10';
+const CACHE_NAME = 'app-v11';
 const urlsToCache = [
   '/android_app/',
   '/android_app/index.html',
@@ -7,6 +7,7 @@ const urlsToCache = [
   '/android_app/ihc/',
   '/android_app/ish/',
   '/android_app/prompter/',
+  '/android_app/prompter/joa2026/',
   '/android_app/manifest_home.json',
   '/android_app/manifest_msc.json',
   '/android_app/manifest_ihc.json',

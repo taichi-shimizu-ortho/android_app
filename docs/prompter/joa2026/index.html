@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>JOA 2026 プロンプター</title>
+<!-- Prompter PWA (/android_app/prompter/) の一部として配信する -->
+<link rel="manifest" href="/android_app/manifest_prompter.json">
+<link rel="icon" type="image/png" href="/android_app/icons/prompter/icon-192.png">
+<link rel="apple-touch-icon" href="/android_app/icons/prompter/icon-192.png">
+<style>
+  :root { color-scheme: dark; --font-size: 30px; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #111827; color: #f3f4f6;
+    font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif;
+  }
+  .app {
+    height: 100vh; height: 100dvh;
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  header { padding: 10px 12px; background: #1f2937; flex: none; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 17px; margin: 0; }
+  .back { color: #93c5fd; text-decoration: none; font-size: 14px; white-space: nowrap; }
+  button, select, .file-label {
+    min-height: 44px; border: 1px solid #4b5563; border-radius: 9px;
+    background: #374151; color: white; font-size: 15px;
+    padding: 8px 12px; cursor: pointer; touch-action: manipulation;
+  }
+  button.primary { background: #2563eb; border-color: #60a5fa; font-weight: bold; }
+  button:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #60a5fa; outline-offset: 2px;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; align-items: center; }
+  .clock { font-variant-numeric: tabular-nums; font-weight: bold; font-size: 20px; }
+  .timeline { display: flex; align-items: center; gap: 9px; margin-top: 8px; }
+  input[type="range"] { accent-color: #60a5fa; min-height: 32px; min-width: 0; }
+  input[type="checkbox"] { accent-color: #60a5fa; width: 20px; height: 20px; }
+  #seek { flex: 1; width: 100%; }
+  #total { color: #cbd5e1; font-variant-numeric: tabular-nums; }
+  .reader-wrap { position: relative; flex: 1; min-height: 0; }
+  #reader {
+    height: 100%; overflow-y: auto; overscroll-behavior: contain;
+    padding: 35vh 16px; scrollbar-width: thin;
+  }
+  .line {
+    font-size: var(--font-size); line-height: 1.65;
+    padding: 16px 14px; border-radius: 12px; margin-bottom: 12px;
+    color: #9ca3af; overflow-wrap: anywhere; cursor: pointer;
+  }
+  .line.active { background: #213c60; color: #fff; box-shadow: inset 4px 0 #60a5fa; }
+  .line.past { color: #6b7280; }
+  .stamp { display: block; font-size: 13px; color: #93c5fd; margin-bottom: 5px; }
+  .hint { font-size: 12px; color: #cbd5e1; padding-top: 6px; }
+  footer { background: #1f2937; padding: 6px 12px 9px; flex: none; }
+  summary { cursor: pointer; min-height: 36px; padding: 8px 0; }
+  details[open] .editor { max-height: 36vh; overflow-y: auto; }
+  textarea {
+    display: block; width: 100%; height: 135px; resize: vertical;
+    border: 1px solid #4b5563; border-radius: 8px; background: #111827;
+    color: #f3f4f6; padding: 10px; font: 16px/1.5 monospace;
+  }
+  .editor-buttons { display: flex; flex-wrap: wrap; gap: 7px; margin: 9px 0; }
+  .settings { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 14px; }
+  .settings label { display: flex; gap: 7px; align-items: center; min-height: 36px; }
+  #font { width: 100px; }
+  #status { font-size: 12px; color: #cbd5e1; margin: 6px 0 0; min-height: 18px; }
+  #reader.mirror .line, #reader.mirror #blindHint { transform: scaleX(-1); }
+  [hidden] { display: none !important; }
+
+  /* 暗記モードでは直前の1行だけを表示する */
+  #reader.blind .line { display: none; }
+  #reader.blind .line.previous {
+    display: block; color: #f3f4f6; background: #263449;
+    box-shadow: inset 4px 0 #fbbf24; cursor: default;
+  }
+  #reader.blind { padding-top: 24px; padding-bottom: 24px; }
+  #blindHint {
+    font-size: var(--font-size); line-height: 1.65;
+    padding: 16px 14px; color: #cbd5e1;
+  }
+  @media (min-width: 800px) {
+    #reader {
+      padding-left: max(20px, calc((100% - 900px)/2));
+      padding-right: max(20px, calc((100% - 900px)/2));
+    }
+  }
+  @media (max-height: 450px) {
+    header { padding: 5px 10px; }
+    .controls { margin-top: 4px; }
+    .hint { display: none; }
+    .line { padding: 8px 12px; margin-bottom: 6px; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <div class="top">
+      <a class="back" href="/android_app/prompter/#/prompter">← 戻る</a>
+      <h1>JOA 2026 プロンプター</h1>
+      <button id="fullscreen" aria-label="全画面切り替え">全画面</button>
+    </div>
+    <div class="controls">
+      <button id="play" class="primary">▶ 再生</button>
+      <button id="reset">先頭へ</button>
+      <button id="back">−10秒</button>
+      <label>速度
+        <select id="speed" aria-label="再生速度">
+          <option value="0.75">0.75倍</option>
+          <option value="0.9">0.9倍</option>
+          <option value="1" selected>1.0倍</option>
+          <option value="1.1">1.1倍</option>
+          <option value="1.25">1.25倍</option>
+          <option value="1.5">1.5倍</option>
+        </select>
+      </label>
+      <span id="clock" class="clock">00:00</span>
+    </div>
+    <div class="timeline">
+      <input id="seek" type="range" min="0" max="180" step="0.1" value="0" aria-label="読み上げ位置">
+      <span id="total">03:00</span>
+    </div>
+    <div id="modeHint" class="hint"></div>
+  </header>
+  <section class="reader-wrap" aria-label="読み上げ原稿">
+    <div id="reader"></div>
+  </section>
+  <footer>
+    <div class="settings">
+      <label><input id="blind" type="checkbox"> 暗記モード</label>
+      <label>文字 <input id="font" type="range" min="20" max="60" value="30" aria-label="文字サイズ"> <span id="fontValue">30</span></label>
+      <label><input id="mirror" type="checkbox"> 左右反転</label>
+      <button id="center">表示行へ</button>
+    </div>
+    <details id="editorDetails">
+      <summary>原稿の読み込み・編集</summary>
+      <div class="editor">
+        <textarea id="source" spellcheck="false" aria-label="LRC原稿"></textarea>
+        <div class="editor-buttons">
+          <button id="apply" class="primary">原稿を反映</button>
+          <label class="file-label" for="file">LRCを開く</label>
+          <input id="file" type="file" accept=".lrc,.txt,text/plain" hidden>
+          <button id="download">LRCを保存</button>
+          <button id="sample">3分原稿に戻す</button>
+        </div>
+        <div class="hint">UTF-8対応。最終行に [03:00.00] のような空の時刻行を置くと、終了時間を指定できます。</div>
+      </div>
+    </details>
+    <p id="status" role="status"></p>
+  </footer>
+</main>
+<script>
+"use strict";
+const SAMPLE = `[00:00.00]「大腿骨寛骨臼インピンジメントおよび変形性股関節症患者における、
+[00:05.80]股関節でのリラキシン受容体の発現」について発表します。
+[00:10.50]よろしくお願いします。
+[00:13.20]リラキシンは、妊娠時に分泌され、受容体であるRXFP1を介して、
+[00:18.50]コラーゲン分解や靭帯の弛緩に関与するペプチドホルモンです。
+[00:23.50]関節の弛緩性や股関節疾患への関与が考えられますが、
+[00:27.90]ヒト股関節におけるRXFP1の発現や局在は、十分に明らかにされていません。
+[00:34.20]そこで本研究では、股関節におけるRXFP1の発現と局在について、
+[00:39.50]性別および関節症の有無による違いを検討し、さらに発現細胞の種類を調べました。
+[00:46.00]対象は、大腿骨寛骨臼インピンジメント、以下FAIに対して股関節鏡手術を行った15例と、
+[00:53.50]変形性股関節症に対して人工股関節全置換術を行った7例です。
+[00:58.50]FAI群では大腿骨頭頸部移行部のCAM病変と関節包を、
+[01:03.60]変形性股関節症群では関節包と関節唇を採取しました。
+[01:08.00]これらの組織に対し、組織学的解析、RXFP1の免疫組織化学、
+[01:13.10]細胞マーカーとの免疫二重染色、およびin situ hybridizationを行いました。
+[01:20.80]結果です。組織学的には、膠原線維、線維芽細胞および軟骨細胞を認めました。
+[01:26.80]免疫組織化学によるRXFP1陽性率は、FAI群のCAM病変で50％、関節包で25％、
+[01:34.20]変形性股関節症群の関節包で50％、関節唇で83.3％でした。
+[01:39.90]変形性股関節症群の関節唇で高い陽性率を示しましたが、
+[01:44.40]いずれの群、部位においても、男女間の有意差は認めませんでした。
+[01:49.60]次に、RXFP1陽性細胞の種類を検討しました。
+[01:53.60]免疫二重染色では、RXFP1陽性細胞と、
+[01:57.10]間葉系細胞マーカーであるビメンチン陽性細胞、
+[02:00.90]および軟骨細胞マーカーであるSOX9陽性細胞との共局在を認めました。
+[02:07.10]この結果は、線維芽細胞や軟骨細胞におけるRXFP1の発現を支持するものです。
+[02:13.50]また、in situ hybridizationでは、
+[02:17.60]両群の組織にRXFP1のメッセンジャーRNAの発現を認めました。
+[02:22.90]以上から、ヒト股関節組織にRXFP1が発現することが明らかとなりました。
+[02:29.00]血中リラキシンが、この受容体を介して股関節組織に作用する可能性が考えられます。
+[02:35.60]ただし、本研究は受容体の発現を検討したものであり、
+[02:40.00]リラキシンの実際の作用や、関節症の進行との因果関係を示したものではありません。
+[02:46.50]結論として、リラキシン・RXFP1シグナル系が、
+[02:50.80]靭帯弛緩だけでなく、股関節組織の病態形成にも関与する可能性が示唆されました。
+[02:57.20]ご清聴ありがとうございました。
+[03:00.00]`;
+
+const $ = id => document.getElementById(id);
+const STORAGE = "lrc-prompter-v1";
+let entries = [], nodes = [], duration = 180, elapsed = 0;
+let playing = false, lastTick = 0, raf = 0, active = -2;
+let wake = null, wakePending = false, storageAvailable = true;
+let playbackSpeed = 1, blindHint = null;
+
+function saved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE) || "{}") || {}; }
+  catch { return {}; }
+}
+function save() {
+  try {
+    localStorage.setItem(STORAGE, JSON.stringify({
+      source: $("source").value, font: $("font").value,
+      mirror: $("mirror").checked, speed: $("speed").value,
+      blind: $("blind").checked
+    }));
+    storageAvailable = true;
+  } catch { storageAvailable = false; }
+}
+function message(text) { $("status").textContent = text; }
+function format(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  return String(Math.floor(sec / 60)).padStart(2, "0") + ":" +
+    String(sec % 60).padStart(2, "0");
+}
+function parseLrc(text) {
+  const result = [];
+  const offsetMatch = text.match(/\[offset:\s*(-?\d+)\]/i);
+  const offset = offsetMatch ? Number(offsetMatch[1]) / 1000 : 0;
+  for (const raw of text.replace(/^﻿/, "").split(/\r?\n/)) {
+    const tags = [...raw.matchAll(/\[(\d+):([0-5]?\d)(?:\.(\d{1,3}))?\]/g)];
+    if (!tags.length) continue;
+    const content = raw.replace(/\[[^\]]*\]/g, "").trim();
+    for (const tag of tags) {
+      const time = Number(tag[1]) * 60 + Number(tag[2]) +
+        (tag[3] ? Number("0." + tag[3]) : 0) + offset;
+      result.push({ time: Math.max(0, time), text: content });
+    }
+  }
+  return result.sort((a, b) => a.time - b.time);
+}
+function visibleIndex() {
+  // 終了時には最後の行も読み終えたものとして表示する。
+  if ($("blind").checked) {
+    return elapsed >= duration ? entries.length - 1 : active - 1;
+  }
+  return active;
+}
+function centerLine(smooth = true) {
+  const reader = $("reader");
+  if ($("blind").checked) {
+    // 暗記モードは1行のみ。長文は手動スクロールできる。
+    reader.scrollTo({ top: 0, behavior: "auto" });
+    return;
+  }
+  const node = nodes[visibleIndex()];
+  if (!node) return;
+  reader.scrollTo({
+    top: node.offsetTop - reader.clientHeight / 2 + node.offsetHeight / 2,
+    behavior: smooth ? "smooth" : "auto"
+  });
+}
+function renderTime(force = false) {
+  $("clock").textContent = format(elapsed);
+  $("seek").value = elapsed;
+  let index = -1;
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].time <= elapsed) index = i;
+    else break;
+  }
+  // 終了時は暗記モードでも最後の行を表示する。
+  const finishedChanged = $("reader").classList.contains("finished") !== (elapsed >= duration);
+  if (force || index !== active || finishedChanged) {
+    active = index;
+    const blind = $("blind").checked;
+    const previous = visibleIndex();
+    $("reader").classList.toggle("blind", blind);
+    $("reader").classList.toggle("finished", elapsed >= duration);
+    $("modeHint").textContent = blind
+      ? "暗記モード：表示は1つ前の行だけ。今の内容を思い出して話してください。"
+      : "青い行が現在の原稿です。行をタップすると、その時刻へ移動します。";
+    nodes.forEach((node, i) => {
+      node.classList.toggle("active", i === active);
+      node.classList.toggle("past", i < active);
+      node.classList.toggle("previous", blind && i === previous);
+      node.tabIndex = blind ? -1 : 0;
+      if (blind) node.removeAttribute("role");
+      else node.setAttribute("role", "button");
+      if (!blind && i === active) node.setAttribute("aria-current", "true");
+      else node.removeAttribute("aria-current");
+      node.querySelector(".stamp").textContent =
+        (blind ? "1つ前の内容 · " : "") + format(entries[i].time);
+    });
+    if (blindHint) {
+      blindHint.hidden = !blind || previous >= 0;
+      blindHint.textContent = active < 0
+        ? "開始時刻まで待機しています。"
+        : "最初の内容を思い出してください。";
+    }
+    centerLine(!force);
+  }
+}
+async function acquireWake() {
+  if (!("wakeLock" in navigator) || !playing || document.hidden || wake || wakePending) return;
+  wakePending = true;
+  try {
+    const lock = await navigator.wakeLock.request("screen");
+    if (!playing || document.hidden) {
+      await lock.release();
+      return;
+    }
+    wake = lock;
+    lock.addEventListener("release", () => { if (wake === lock) wake = null; });
+  } catch {
+    message("画面消灯防止を利用できません。端末の画面タイムアウト設定を確認してください。");
+  } finally { wakePending = false; }
+}
+function releaseWake() {
+  const lock = wake;
+  wake = null;
+  if (lock) lock.release().catch(() => {});
+}
+function syncTime(now = performance.now()) {
+  if (playing) {
+    elapsed = Math.min(duration, elapsed + (now - lastTick) / 1000 * playbackSpeed);
+  }
+  lastTick = now;
+}
+function pause() {
+  syncTime();
+  playing = false;
+  cancelAnimationFrame(raf);
+  $("play").textContent = "▶ 再生";
+  releaseWake();
+  renderTime();
+}
+function tick(now) {
+  if (!playing) return;
+  syncTime(now);
+  renderTime();
+  if (elapsed >= duration) {
+    pause();
+    message("読み上げ終了です。");
+    return;
+  }
+  raf = requestAnimationFrame(tick);
+}
+function start() {
+  if (!entries.length) return;
+  if (elapsed >= duration) elapsed = 0;
+  playing = true;
+  lastTick = performance.now();
+  $("play").textContent = "❚❚ 一時停止";
+  message($("blind").checked
+    ? "暗記練習中。現在の行は非表示です。"
+    : "再生中。時間に合わせて自動スクロールします。");
+  acquireWake();
+  renderTime(true);
+  raf = requestAnimationFrame(tick);
+}
+function jump(time) {
+  elapsed = Math.max(0, Math.min(duration, time));
+  lastTick = performance.now();
+  renderTime(true);
+}
+function apply(text, persist = true) {
+  const parsed = parseLrc(text);
+  const lines = parsed.filter(item => item.text);
+  if (!lines.length) {
+    message("時刻付きの原稿がありません。[00:00.00]本文 の形式で入力してください。");
+    return false;
+  }
+  pause();
+  entries = lines;
+  const last = parsed[parsed.length - 1];
+  duration = last.text ? last.time + 5 : last.time;
+  duration = Math.max(duration, entries[entries.length - 1].time + 0.1);
+  elapsed = 0;
+  active = -2;
+  $("seek").max = duration;
+  $("total").textContent = format(duration);
+  $("reader").replaceChildren();
+  blindHint = document.createElement("div");
+  blindHint.id = "blindHint";
+  blindHint.hidden = true;
+  $("reader").appendChild(blindHint);
+  nodes = entries.map((entry, index) => {
+    const node = document.createElement("div");
+    node.className = "line";
+    const stamp = document.createElement("span");
+    stamp.className = "stamp";
+    const body = document.createElement("span");
+    body.textContent = entry.text;
+    node.append(stamp, body);
+    node.addEventListener("click", () => {
+      if (!$("blind").checked) jump(entries[index].time);
+    });
+    node.addEventListener("keydown", event => {
+      if (!$("blind").checked && (event.key === "Enter" || event.key === " ")) {
+        event.preventDefault();
+        jump(entries[index].time);
+      }
+    });
+    $("reader").appendChild(node);
+    return node;
+  });
+  if (persist) save();
+  renderTime(true);
+  message(`${entries.length}行・終了時刻 ${format(duration)}。` +
+    (storageAvailable ? "原稿はこのブラウザに保存されます。" :
+      "自動保存できません。LRCを保存してください。"));
+  return true;
+}
+function setFont() {
+  document.documentElement.style.setProperty("--font-size", $("font").value + "px");
+  $("fontValue").textContent = $("font").value;
+  centerLine(false);
+}
+
+$("play").addEventListener("click", () => playing ? pause() : start());
+$("reset").addEventListener("click", () => {
+  pause(); jump(0); message("先頭に戻しました。");
+});
+$("back").addEventListener("click", () => {
+  syncTime(); jump(elapsed - 10);
+});
+$("seek").addEventListener("input", () => jump(Number($("seek").value)));
+$("speed").addEventListener("change", () => {
+  syncTime();
+  playbackSpeed = Number($("speed").value);
+  save(); renderTime();
+});
+$("blind").addEventListener("change", () => {
+  syncTime();
+  renderTime(true);
+  save();
+  message($("blind").checked
+    ? "暗記モード：現在の行以降を隠し、直前の1行だけ表示します。"
+    : "通常モードに戻しました。");
+});
+$("font").addEventListener("input", () => { setFont(); save(); });
+$("mirror").addEventListener("change", () => {
+  $("reader").classList.toggle("mirror", $("mirror").checked);
+  save();
+});
+$("center").addEventListener("click", () => centerLine());
+$("apply").addEventListener("click", () => {
+  if (apply($("source").value)) {
+    $("editorDetails").open = false;
+    requestAnimationFrame(() => centerLine(false));
+  }
+});
+$("source").addEventListener("input", save);
+$("sample").addEventListener("click", () => {
+  if (!confirm("編集中の原稿を修正版の3分原稿に置き換えますか？")) return;
+  $("source").value = SAMPLE;
+  apply(SAMPLE);
+});
+$("file").addEventListener("change", async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    $("source").value = text;
+    if (apply(text)) {
+      $("editorDetails").open = false;
+      requestAnimationFrame(() => centerLine(false));
+    }
+  } catch { message("ファイルを読み込めませんでした。"); }
+  event.target.value = "";
+});
+$("download").addEventListener("click", () => {
+  const blob = new Blob(
+    [$("source").value.replace(/\r?\n/g, "\r\n")],
+    { type: "text/plain;charset=utf-8" }
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "prompter.lrc";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+});
+$("fullscreen").addEventListener("click", async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    } else message("このブラウザは全画面表示に対応していません。");
+  } catch { message("全画面表示に切り替えられませんでした。"); }
+});
+document.addEventListener("fullscreenchange", () => {
+  $("fullscreen").textContent = document.fullscreenElement ? "全画面解除" : "全画面";
+  requestAnimationFrame(() => centerLine(false));
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && playing) acquireWake();
+});
+window.addEventListener("resize", () => centerLine(false));
+$("editorDetails").addEventListener("toggle", () => {
+  requestAnimationFrame(() => centerLine(false));
+});
+
+const state = saved();
+if (state.font && Number(state.font) >= 20 && Number(state.font) <= 60) {
+  $("font").value = state.font;
+}
+if ([...$("speed").options].some(option => option.value === state.speed)) {
+  $("speed").value = state.speed;
+}
+playbackSpeed = Number($("speed").value);
+$("mirror").checked = !!state.mirror;
+$("blind").checked = !!state.blind;
+$("reader").classList.toggle("mirror", $("mirror").checked);
+setFont();
+$("source").value = typeof state.source === "string" ? state.source : SAMPLE;
+if (!apply($("source").value, false)) $("editorDetails").open = true;
+
+// オフラインでも使えるよう、他のアプリと共通の Service Worker を登録する
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/android_app/sw.js", { scope: "/android_app/" }).catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

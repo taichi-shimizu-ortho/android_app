@@ -110,6 +110,7 @@ export default function Prompter() {
 
             <div className="prompter-container">
                 <div className="prompter-content">
+                    <a href="/android_app/prompter/joa2026/" className="script-switch">📄 JOA 2026（日本語・LRC）を開く</a>
                     <div className="section-title">{section.title}</div>
                     <div className="section-text">{section.text}</div>
                 </div>

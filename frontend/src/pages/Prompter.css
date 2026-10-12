@@ -32,6 +32,7 @@
 .prompter-wrapper .total-timer { font-size: 0.9em; color: #ccc; }
 .prompter-wrapper .section-counter { font-size: 1.1em; color: #999; }
 .back-to-home-prompter { color: #f77e58; text-decoration: none; font-size: 0.9em; font-weight: bold; }
+.prompter-content .script-switch { display: inline-block; margin-bottom: 20px; padding: 8px 14px; border: 1px solid #f77e58; border-radius: 8px; color: #f77e58; text-decoration: none; font-size: 0.9em; }
 
 /* コントロール */
 .prompter-controls { 
