@@ -122,6 +122,8 @@
       </label>
       <span id="clock" class="clock">00:00</span>
       <label class="toggle"><input id="blind" type="checkbox"> 暗記モード</label>
+      <label class="toggle tts-only"><input id="tts" type="checkbox"> 🔊 読み上げ</label>
+      <button id="speakNow" class="tts-only">🔊 今の行</button>
     </div>
     <div class="timeline">
       <input id="seek" type="range" min="0" max="180" step="0.1" value="0" aria-label="読み上げ位置">
@@ -133,6 +135,7 @@
         <div class="settings">
           <label>文字 <input id="font" type="range" min="20" max="60" value="30" aria-label="文字サイズ"> <span id="fontValue">30</span></label>
           <label><input id="mirror" type="checkbox"> 左右反転</label>
+          <label class="tts-only">声 <select id="voice" aria-label="読み上げの声"><option value="">自動（日本語）</option></select></label>
           <button id="center">表示行へ</button>
         </div>
         <textarea id="source" spellcheck="false" aria-label="LRC原稿"></textarea>
@@ -197,6 +200,8 @@ let entries = [], nodes = [], duration = 180, elapsed = 0;
 let playing = false, lastTick = 0, raf = 0, active = -2;
 let wake = null, wakePending = false, storageAvailable = true;
 let playbackSpeed = 1, blindHint = null;
+const speech = "speechSynthesis" in window ? window.speechSynthesis : null;
+let spokenIndex = -2, savedVoice = "";
 
 function saved() {
   try { return JSON.parse(localStorage.getItem(STORAGE) || "{}") || {}; }
@@ -207,7 +212,8 @@ function save() {
     localStorage.setItem(STORAGE, JSON.stringify({
       source: $("source").value, font: $("font").value,
       mirror: $("mirror").checked, speed: $("speed").value,
-      blind: $("blind").checked
+      blind: $("blind").checked, tts: $("tts").checked,
+      voice: $("voice").value || savedVoice
     }));
     storageAvailable = true;
   } catch { storageAvailable = false; }
@@ -255,6 +261,34 @@ function centerLine(smooth = true) {
     behavior: smooth ? "smooth" : "auto"
   });
 }
+// 読み上げは端末の音声合成（Android では Google TTS）を使う。
+// 行が切り替わったら前の発話を止めて新しい行を読むので、タイマーとずれない。
+function loadVoices() {
+  if (!speech) return;
+  const voices = speech.getVoices().filter(v => /^ja\b/i.test(v.lang));
+  const select = $("voice");
+  const current = select.value || savedVoice;
+  select.replaceChildren(new Option("自動（日本語）", ""));
+  for (const v of voices) select.add(new Option(v.name, v.name));
+  if (voices.some(v => v.name === current)) select.value = current;
+}
+function speakText(text) {
+  if (!speech || !text) return;
+  speech.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "ja-JP";
+  utter.rate = playbackSpeed;
+  const name = $("voice").value;
+  const voices = speech.getVoices();
+  utter.voice = voices.find(v => v.name === name) ||
+    voices.find(v => /^ja\b/i.test(v.lang) && /google/i.test(v.name)) ||
+    voices.find(v => /^ja\b/i.test(v.lang)) || null;
+  speech.speak(utter);
+}
+function stopSpeech() {
+  spokenIndex = -2;
+  if (speech) speech.cancel();
+}
 function renderTime(force = false) {
   $("clock").textContent = format(elapsed);
   $("seek").value = elapsed;
@@ -294,6 +328,10 @@ function renderTime(force = false) {
     }
     centerLine(!force);
   }
+  if (playing && $("tts").checked && active >= 0 && active !== spokenIndex) {
+    spokenIndex = active;
+    speakText(entries[active].text);
+  }
 }
 async function acquireWake() {
   if (!("wakeLock" in navigator) || !playing || document.hidden || wake || wakePending) return;
@@ -321,8 +359,9 @@ function syncTime(now = performance.now()) {
   }
   lastTick = now;
 }
-function pause() {
+function pause(silence = true) {
   syncTime();
+  if (silence) stopSpeech();
   playing = false;
   cancelAnimationFrame(raf);
   $("play").textContent = "▶ 再生";
@@ -334,7 +373,7 @@ function tick(now) {
   syncTime(now);
   renderTime();
   if (elapsed >= duration) {
-    pause();
+    pause(false);
     message("読み上げ終了です。");
     return;
   }
@@ -354,6 +393,7 @@ function start() {
   raf = requestAnimationFrame(tick);
 }
 function jump(time) {
+  if (playing) stopSpeech();
   elapsed = Math.max(0, Math.min(duration, time));
   lastTick = performance.now();
   renderTime(true);
@@ -424,6 +464,24 @@ $("speed").addEventListener("change", () => {
   syncTime();
   playbackSpeed = Number($("speed").value);
   save(); renderTime();
+});
+$("tts").addEventListener("change", () => {
+  if ($("tts").checked) { spokenIndex = -2; renderTime(); }
+  else stopSpeech();
+  save();
+  message($("tts").checked
+    ? "読み上げON：再生中、行が切り替わるたびに読み上げます。"
+    : "読み上げOFF");
+});
+$("speakNow").addEventListener("click", () => {
+  // 暗記モードで詰まったときのヒントにも使える
+  const index = Math.max(0, Math.min(active, entries.length - 1));
+  if (entries[index]) speakText(entries[index].text);
+});
+$("voice").addEventListener("change", () => {
+  savedVoice = $("voice").value;
+  save();
+  speakText("この声で読み上げます。");
 });
 $("blind").addEventListener("change", () => {
   syncTime();
@@ -508,6 +566,14 @@ if ([...$("speed").options].some(option => option.value === state.speed)) {
 playbackSpeed = Number($("speed").value);
 $("mirror").checked = !!state.mirror;
 $("blind").checked = !!state.blind;
+$("tts").checked = !!state.tts && !!speech;
+savedVoice = typeof state.voice === "string" ? state.voice : "";
+if (speech) {
+  loadVoices();
+  speech.addEventListener("voiceschanged", loadVoices);
+} else {
+  document.querySelectorAll(".tts-only").forEach(el => { el.hidden = true; });
+}
 $("reader").classList.toggle("mirror", $("mirror").checked);
 setFont();
 $("source").value = typeof state.source === "string" ? state.source : SAMPLE;
