@@ -102,7 +102,7 @@ export default function Prompter() {
             <div className="timer-bar" style={{ width: `${progress}%` }}></div>
             
             <div className="header-info">
-                <a href="/android_app/home/#/" className="back-to-home-prompter">🏠 ホームへ戻る</a>
+                <a href="/android_app/prompter/#/prompter" className="back-to-home-prompter">← 一覧</a>
                 <div className="section-counter">{currentSection + 1} / {sections.length}</div>
                 <div className="total-timer">Total: {oMins}:{String(oSecs).padStart(2, '0')}</div>
                 <div className="timer-display">{mins}:{String(secs).padStart(2, '0')}</div>
@@ -110,7 +110,6 @@ export default function Prompter() {
 
             <div className="prompter-container">
                 <div className="prompter-content">
-                    <a href="/android_app/prompter/joa2026/" className="script-switch">📄 JOA 2026（日本語・LRC）を開く</a>
                     <div className="section-title">{section.title}</div>
                     <div className="section-text">{section.text}</div>
                 </div>
