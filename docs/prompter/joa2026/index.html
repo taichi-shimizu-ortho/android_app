@@ -122,8 +122,8 @@
       </label>
       <span id="clock" class="clock">00:00</span>
       <label class="toggle"><input id="blind" type="checkbox"> 暗記モード</label>
-      <label class="toggle tts-only"><input id="tts" type="checkbox"> 🔊 読み上げ</label>
-      <button id="speakNow" class="tts-only">🔊 今の行</button>
+      <label class="toggle"><input id="tts" type="checkbox"> 🔊 音声</label>
+      <button id="speakNow">🔊 今の行</button>
     </div>
     <div class="timeline">
       <input id="seek" type="range" min="0" max="180" step="0.1" value="0" aria-label="読み上げ位置">
@@ -135,7 +135,7 @@
         <div class="settings">
           <label>文字 <input id="font" type="range" min="20" max="60" value="30" aria-label="文字サイズ"> <span id="fontValue">30</span></label>
           <label><input id="mirror" type="checkbox"> 左右反転</label>
-          <label class="tts-only">声 <select id="voice" aria-label="読み上げの声"><option value="">自動（日本語）</option></select></label>
+          <label class="tts-only">端末読み上げの声 <select id="voice" aria-label="端末読み上げの声"><option value="">自動（日本語）</option></select></label>
           <button id="center">表示行へ</button>
         </div>
         <textarea id="source" spellcheck="false" aria-label="LRC原稿"></textarea>
@@ -144,9 +144,10 @@
           <label class="file-label" for="file">LRCを開く</label>
           <input id="file" type="file" accept=".lrc,.txt,text/plain" hidden>
           <button id="download">LRCを保存</button>
-          <button id="sample">3分原稿に戻す</button>
+          <button id="sample">音声付き原稿に戻す</button>
         </div>
-        <div class="hint">UTF-8対応。最終行に [03:00.00] のような空の時刻行を置くと、終了時間を指定できます。</div>
+        <div class="hint">UTF-8対応。最終行に [03:00.00] のような空の時刻行を置くと、終了時間を指定できます。
+          本文を変えると録音済み音声と合わなくなるため、端末の読み上げに切り替わります。</div>
       </div>
     </details>
     <div id="modeHint" class="hint"></div>
@@ -158,41 +159,9 @@
 </main>
 <script>
 "use strict";
-const SAMPLE = `[00:00.00]「大腿骨寛骨臼インピンジメントおよび変形性股関節症患者における、
-[00:05.80]股関節でのリラキシン受容体の発現」について発表します。
-[00:10.50]よろしくお願いします。
-[00:13.20]リラキシンは、妊娠時に分泌され、受容体であるRXFP1を介して、
-[00:18.50]コラーゲン分解や靭帯の弛緩に関与するペプチドホルモンです。
-[00:23.50]関節の弛緩性や股関節疾患への関与が考えられますが、
-[00:27.90]ヒト股関節におけるRXFP1の発現や局在は、十分に明らかにされていません。
-[00:34.20]そこで本研究では、股関節におけるRXFP1の発現と局在について、
-[00:39.50]性別および関節症の有無による違いを検討し、さらに発現細胞の種類を調べました。
-[00:46.00]対象は、大腿骨寛骨臼インピンジメント、以下FAIに対して股関節鏡手術を行った15例と、
-[00:53.50]変形性股関節症に対して人工股関節全置換術を行った7例です。
-[00:58.50]FAI群では大腿骨頭頸部移行部のCAM病変と関節包を、
-[01:03.60]変形性股関節症群では関節包と関節唇を採取しました。
-[01:08.00]これらの組織に対し、組織学的解析、RXFP1の免疫組織化学、
-[01:13.10]細胞マーカーとの免疫二重染色、およびin situ hybridizationを行いました。
-[01:20.80]結果です。組織学的には、膠原線維、線維芽細胞および軟骨細胞を認めました。
-[01:26.80]免疫組織化学によるRXFP1陽性率は、FAI群のCAM病変で50％、関節包で25％、
-[01:34.20]変形性股関節症群の関節包で50％、関節唇で83.3％でした。
-[01:39.90]変形性股関節症群の関節唇で高い陽性率を示しましたが、
-[01:44.40]いずれの群、部位においても、男女間の有意差は認めませんでした。
-[01:49.60]次に、RXFP1陽性細胞の種類を検討しました。
-[01:53.60]免疫二重染色では、RXFP1陽性細胞と、
-[01:57.10]間葉系細胞マーカーであるビメンチン陽性細胞、
-[02:00.90]および軟骨細胞マーカーであるSOX9陽性細胞との共局在を認めました。
-[02:07.10]この結果は、線維芽細胞や軟骨細胞におけるRXFP1の発現を支持するものです。
-[02:13.50]また、in situ hybridizationでは、
-[02:17.60]両群の組織にRXFP1のメッセンジャーRNAの発現を認めました。
-[02:22.90]以上から、ヒト股関節組織にRXFP1が発現することが明らかとなりました。
-[02:29.00]血中リラキシンが、この受容体を介して股関節組織に作用する可能性が考えられます。
-[02:35.60]ただし、本研究は受容体の発現を検討したものであり、
-[02:40.00]リラキシンの実際の作用や、関節症の進行との因果関係を示したものではありません。
-[02:46.50]結論として、リラキシン・RXFP1シグナル系が、
-[02:50.80]靭帯弛緩だけでなく、股関節組織の病態形成にも関与する可能性が示唆されました。
-[02:57.20]ご清聴ありがとうございました。
-[03:00.00]`;
+// 原稿と音声は tools/lrc_tts.py で作る。LRC の時刻は音声に合わせてある。
+const SCRIPT_URL = "joa2026.lrc";
+const AUDIO_URL = "audio.mp3";
 
 const $ = id => document.getElementById(id);
 const STORAGE = "lrc-prompter-v1";
@@ -202,6 +171,9 @@ let wake = null, wakePending = false, storageAvailable = true;
 let playbackSpeed = 1, blindHint = null;
 const speech = "speechSynthesis" in window ? window.speechSynthesis : null;
 let spokenIndex = -2, savedVoice = "";
+// 録音済み音声：本文が audioScript と同じときは音声の再生位置を時計にする
+const audio = new Audio();
+let audioScript = "", audioReady = false, useAudio = false, segmentEnd = null;
 
 function saved() {
   try { return JSON.parse(localStorage.getItem(STORAGE) || "{}") || {}; }
@@ -212,7 +184,7 @@ function save() {
     localStorage.setItem(STORAGE, JSON.stringify({
       source: $("source").value, font: $("font").value,
       mirror: $("mirror").checked, speed: $("speed").value,
-      blind: $("blind").checked, tts: $("tts").checked,
+      blind: $("blind").checked, sound: $("tts").checked,
       voice: $("voice").value || savedVoice
     }));
     storageAvailable = true;
@@ -239,6 +211,13 @@ function parseLrc(text) {
     }
   }
   return result.sort((a, b) => a.time - b.time);
+}
+function sameText(a, b) {
+  const body = list => list.filter(e => e.text).map(e => e.text).join("\n");
+  return body(a) === body(b);
+}
+function matchesAudio(text) {
+  return !!audioScript && sameText(parseLrc(text), parseLrc(audioScript));
 }
 function visibleIndex() {
   // 終了時には最後の行も読み終えたものとして表示する。
@@ -328,7 +307,7 @@ function renderTime(force = false) {
     }
     centerLine(!force);
   }
-  if (playing && $("tts").checked && active >= 0 && active !== spokenIndex) {
+  if (!useAudio && playing && $("tts").checked && active >= 0 && active !== spokenIndex) {
     spokenIndex = active;
     speakText(entries[active].text);
   }
@@ -355,13 +334,19 @@ function releaseWake() {
 }
 function syncTime(now = performance.now()) {
   if (playing) {
-    elapsed = Math.min(duration, elapsed + (now - lastTick) / 1000 * playbackSpeed);
+    if (useAudio && !audio.paused && !audio.ended) {
+      elapsed = Math.min(duration, audio.currentTime);
+    } else {
+      elapsed = Math.min(duration, elapsed + (now - lastTick) / 1000 * playbackSpeed);
+    }
   }
   lastTick = now;
 }
 function pause(silence = true) {
   syncTime();
   if (silence) stopSpeech();
+  audio.pause();
+  segmentEnd = null;
   playing = false;
   cancelAnimationFrame(raf);
   $("play").textContent = "▶ 再生";
@@ -384,6 +369,13 @@ function start() {
   if (elapsed >= duration) elapsed = 0;
   playing = true;
   lastTick = performance.now();
+  if (useAudio) {
+    segmentEnd = null;
+    audio.muted = !$("tts").checked;
+    audio.playbackRate = playbackSpeed;
+    audio.currentTime = elapsed;
+    audio.play().catch(() => message("音声を再生できませんでした。"));
+  }
   $("play").textContent = "❚❚ 一時停止";
   message($("blind").checked
     ? "暗記練習中。現在の行は非表示です。"
@@ -396,9 +388,27 @@ function jump(time) {
   if (playing) stopSpeech();
   elapsed = Math.max(0, Math.min(duration, time));
   lastTick = performance.now();
+  if (useAudio) {
+    if (!playing) { audio.pause(); segmentEnd = null; }
+    audio.currentTime = elapsed;
+    if (playing && elapsed < audio.duration) audio.play().catch(() => {});
+  }
   renderTime(true);
 }
+function playSegment(index) {
+  // 停止中に1行だけ録音音声で聞く
+  audio.muted = false;
+  audio.playbackRate = playbackSpeed;
+  audio.currentTime = entries[index].time;
+  segmentEnd = index + 1 < entries.length ? entries[index + 1].time : null;
+  audio.play().catch(() => {});
+}
 function apply(text, persist = true) {
+  // 本文が録音音声と同じなら、時刻は音声に合わせたものを使う
+  if (matchesAudio(text)) {
+    text = audioScript;
+    $("source").value = text;
+  }
   const parsed = parseLrc(text);
   const lines = parsed.filter(item => item.text);
   if (!lines.length) {
@@ -441,7 +451,10 @@ function apply(text, persist = true) {
   });
   if (persist) save();
   renderTime(true);
+  useAudio = audioReady && matchesAudio(text);
   message(`${entries.length}行・終了時刻 ${format(duration)}。` +
+    (useAudio ? "録音音声（Gemini TTS）を使います。" :
+      audioScript ? "本文が録音音声と異なるため、端末の読み上げを使います。" : "") +
     (storageAvailable ? "原稿はこのブラウザに保存されます。" :
       "自動保存できません。LRCを保存してください。"));
   return true;
@@ -465,18 +478,27 @@ $("speed").addEventListener("change", () => {
   playbackSpeed = Number($("speed").value);
   save(); renderTime();
 });
+$("speed").addEventListener("change", () => { audio.playbackRate = playbackSpeed; });
 $("tts").addEventListener("change", () => {
-  if ($("tts").checked) { spokenIndex = -2; renderTime(); }
+  if (useAudio) audio.muted = !$("tts").checked;
+  else if ($("tts").checked) { spokenIndex = -2; renderTime(); }
   else stopSpeech();
   save();
-  message($("tts").checked
-    ? "読み上げON：再生中、行が切り替わるたびに読み上げます。"
-    : "読み上げOFF");
+  message($("tts").checked ? "音声ON" : "音声OFF（画面だけ進みます）");
 });
 $("speakNow").addEventListener("click", () => {
   // 暗記モードで詰まったときのヒントにも使える
   const index = Math.max(0, Math.min(active, entries.length - 1));
-  if (entries[index]) speakText(entries[index].text);
+  if (!entries[index]) return;
+  if (!useAudio) speakText(entries[index].text);
+  else if (!playing) playSegment(index);
+  else if (!$("tts").checked) speakText(entries[index].text);
+});
+audio.addEventListener("timeupdate", () => {
+  if (!playing && segmentEnd !== null && audio.currentTime >= segmentEnd) {
+    audio.pause();
+    segmentEnd = null;
+  }
 });
 $("voice").addEventListener("change", () => {
   savedVoice = $("voice").value;
@@ -505,9 +527,10 @@ $("apply").addEventListener("click", () => {
 });
 $("source").addEventListener("input", save);
 $("sample").addEventListener("click", () => {
-  if (!confirm("編集中の原稿を修正版の3分原稿に置き換えますか？")) return;
-  $("source").value = SAMPLE;
-  apply(SAMPLE);
+  if (!audioScript) { message("音声付き原稿を読み込めていません。"); return; }
+  if (!confirm("編集中の原稿を、音声付きの原稿に置き換えますか？")) return;
+  $("source").value = audioScript;
+  apply(audioScript);
 });
 $("file").addEventListener("change", async event => {
   const file = event.target.files[0];
@@ -530,7 +553,7 @@ $("download").addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "prompter.lrc";
+  link.download = "joa2026.lrc";
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -566,7 +589,7 @@ if ([...$("speed").options].some(option => option.value === state.speed)) {
 playbackSpeed = Number($("speed").value);
 $("mirror").checked = !!state.mirror;
 $("blind").checked = !!state.blind;
-$("tts").checked = !!state.tts && !!speech;
+$("tts").checked = state.sound !== false;
 savedVoice = typeof state.voice === "string" ? state.voice : "";
 if (speech) {
   loadVoices();
@@ -576,8 +599,29 @@ if (speech) {
 }
 $("reader").classList.toggle("mirror", $("mirror").checked);
 setFont();
-$("source").value = typeof state.source === "string" ? state.source : SAMPLE;
-if (!apply($("source").value, false)) $("editorDetails").open = true;
+$("source").value = typeof state.source === "string" ? state.source : "";
+
+async function init() {
+  try {
+    const response = await fetch(SCRIPT_URL);
+    if (response.ok) audioScript = await response.text();
+  } catch { /* オフラインで未キャッシュ */ }
+  if (!$("source").value.trim()) $("source").value = audioScript;
+  if (!apply($("source").value, false)) $("editorDetails").open = true;
+  if (!audioScript) return;
+  try {
+    // Blob にしておくと、シークやオフライン再生が Range リクエストに左右されない
+    const response = await fetch(AUDIO_URL);
+    if (!response.ok) throw new Error(response.status);
+    audio.src = URL.createObjectURL(await response.blob());
+    audio.preload = "auto";
+    audioReady = true;
+    if (!playing) apply($("source").value, false);
+  } catch {
+    message("録音音声を読み込めませんでした。端末の読み上げを使います。");
+  }
+}
+init();
 
 // オフラインでも使えるよう、他のアプリと共通の Service Worker を登録する
 if ("serviceWorker" in navigator) {

@@ -13,3 +13,7 @@ wheels/
 .claude/
 
 # Prompter (now public - published to GitHub Pages)
+
+# Secrets / generated TTS cache
+.env
+tools/.tts_cache/
