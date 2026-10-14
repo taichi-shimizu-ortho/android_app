@@ -625,8 +625,24 @@ init();
 
 // オフラインでも使えるよう、他のアプリと共通の Service Worker を登録する
 if ("serviceWorker" in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  // 新しい版が配信されたら読み込み直す。発表中（再生中）は止めずに知らせるだけにする。
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloading) return;
+    if (playing) { message("新しい版があります。停止後に再読み込みしてください。"); return; }
+    reloading = true;
+    location.reload();
+  });
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/android_app/sw.js", { scope: "/android_app/" }).catch(() => {});
+    navigator.serviceWorker.register("/android_app/sw.js", { scope: "/android_app/" })
+      .then(registration => {
+        // ホーム画面のアプリは再読み込みされずに再開することが多いので、前面に戻るたびに更新を確認する
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") registration.update().catch(() => {});
+        });
+      })
+      .catch(() => {});
   });
 }
 </script>
