@@ -1,4 +1,4 @@
-const CACHE_NAME = 'app-v12';
+const CACHE_NAME = 'app-v13';
 const urlsToCache = [
   '/android_app/',
   '/android_app/index.html',
@@ -63,8 +63,14 @@ self.addEventListener('fetch', event => {
 
   // Network first for everything else (to ensure getting the latest Vite assets),
   // fallback to cache if offline.
+  // HTML や LRC・音声は毎回サーバーに確認する（ブラウザの HTTP キャッシュで古い版が出ないように）。
+  // /assets/ はファイル名にハッシュが付くので HTTP キャッシュのままでよい。
+  const url = new URL(event.request.url);
+  const revalidate = url.origin === self.location.origin &&
+    !url.pathname.startsWith('/android_app/assets/');
+  const request = revalidate ? new Request(event.request, { cache: 'no-cache' }) : event.request;
   event.respondWith(
-    fetch(event.request).then(response => {
+    fetch(request).then(response => {
       if (!response || response.status !== 200 || response.type !== 'basic') {
         return response;
       }
