@@ -171,6 +171,8 @@ let wake = null, wakePending = false, storageAvailable = true;
 let playbackSpeed = 1, blindHint = null;
 const speech = "speechSynthesis" in window ? window.speechSynthesis : null;
 let spokenIndex = -2, savedVoice = "";
+// 原稿を手で変えたか。変えていなければ、起動時に最新の音声付き原稿を読み込む
+let edited = false;
 // 録音済み音声：本文が audioScript と同じときは音声の再生位置を時計にする
 const audio = new Audio();
 let audioScript = "", audioReady = false, useAudio = false, segmentEnd = null;
@@ -180,12 +182,13 @@ function saved() {
   catch { return {}; }
 }
 function save() {
+  edited = edited && !matchesAudio($("source").value);
   try {
     localStorage.setItem(STORAGE, JSON.stringify({
       source: $("source").value, font: $("font").value,
       mirror: $("mirror").checked, speed: $("speed").value,
       blind: $("blind").checked, sound: $("tts").checked,
-      voice: $("voice").value || savedVoice
+      voice: $("voice").value || savedVoice, edited
     }));
     storageAvailable = true;
   } catch { storageAvailable = false; }
@@ -525,10 +528,11 @@ $("apply").addEventListener("click", () => {
     requestAnimationFrame(() => centerLine(false));
   }
 });
-$("source").addEventListener("input", save);
+$("source").addEventListener("input", () => { edited = true; save(); });
 $("sample").addEventListener("click", () => {
   if (!audioScript) { message("音声付き原稿を読み込めていません。"); return; }
   if (!confirm("編集中の原稿を、音声付きの原稿に置き換えますか？")) return;
+  edited = false;
   $("source").value = audioScript;
   apply(audioScript);
 });
@@ -537,6 +541,7 @@ $("file").addEventListener("change", async event => {
   if (!file) return;
   try {
     const text = await file.text();
+    edited = true;
     $("source").value = text;
     if (apply(text)) {
       $("editorDetails").open = false;
@@ -591,6 +596,7 @@ $("mirror").checked = !!state.mirror;
 $("blind").checked = !!state.blind;
 $("tts").checked = state.sound !== false;
 savedVoice = typeof state.voice === "string" ? state.voice : "";
+edited = state.edited === true;
 if (speech) {
   loadVoices();
   speech.addEventListener("voiceschanged", loadVoices);
@@ -606,7 +612,8 @@ async function init() {
     const response = await fetch(SCRIPT_URL);
     if (response.ok) audioScript = await response.text();
   } catch { /* オフラインで未キャッシュ */ }
-  if (!$("source").value.trim()) $("source").value = audioScript;
+  // 手で変えていない原稿は、保存済みでも最新の音声付き原稿に置き換える
+  if (audioScript && (!edited || !$("source").value.trim())) $("source").value = audioScript;
   if (!apply($("source").value, false)) $("editorDetails").open = true;
   if (!audioScript) return;
   try {
