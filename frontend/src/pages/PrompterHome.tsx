@@ -10,6 +10,7 @@ interface Talk {
 // 新しい発表を先頭に追加する。終わった発表は archived: true でアーカイブへ移す。
 // 静的HTMLの原稿は frontend/public/prompter/<名前>/index.html に置く。
 const talks: Talk[] = [
+    { href: '/android_app/prompter/relaxin2026/', title: '2026 同門会 RXFP1', desc: 'マウス股関節の RXFP1・日本語・6分・VTT' },
     { href: '/android_app/prompter/joa2026/', title: 'JOA 基礎 2026', desc: '日本整形外科学会基礎学術集会・日本語・LRC' },
     { href: '/android_app/prompter/#/prompter/ors2026', title: 'ORS 2026', desc: 'Orthopaedic Research Society・English', archived: true },
 ];
