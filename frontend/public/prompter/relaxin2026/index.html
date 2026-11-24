@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>2026 同門会 プロンプター</title>
+<!-- Prompter PWA (/android_app/prompter/) の一部として配信する。原稿は WebVTT -->
+<link rel="manifest" href="/android_app/manifest_prompter.json">
+<link rel="icon" type="image/png" href="/android_app/icons/prompter/icon-192.png">
+<link rel="apple-touch-icon" href="/android_app/icons/prompter/icon-192.png">
+<style>
+  /* 色は変数にまとめる。「明るい表示」では白地に黒字にする（明るい会場向け） */
+  :root {
+    color-scheme: dark; --font-size: 30px;
+    --bg: #111827; --panel: #1f2937; --text: #f3f4f6; --muted: #cbd5e1;
+    --upcoming: #d1d5db; --past: #6b7280; --rule: #374151;
+    --accent: #60a5fa; --accent-text: #93c5fd;
+    --active-bg: #213c60; --active-text: #fff;
+    --btn: #374151; --btn-border: #4b5563; --btn-text: #fff;
+    --primary: #2563eb; --primary-border: #60a5fa;
+    --blind-bg: #263449; --warn: #fca5a5;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #ffffff; --panel: #f1f5f9; --text: #0f172a; --muted: #334155;
+    --upcoming: #1f2937; --past: #9ca3af; --rule: #cbd5e1;
+    --accent: #2563eb; --accent-text: #1d4ed8;
+    --active-bg: #fef08a; --active-text: #000;
+    --btn: #e2e8f0; --btn-border: #94a3b8; --btn-text: #0f172a;
+    --primary: #2563eb; --primary-border: #1d4ed8;
+    --blind-bg: #fef9c3; --warn: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif;
+  }
+  .app {
+    height: 100vh; height: 100dvh;
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  header { padding: 10px 12px; background: var(--panel); flex: none; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 17px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .back { color: var(--accent-text); text-decoration: none; font-size: 14px; white-space: nowrap; }
+  button, select, .file-label {
+    min-height: 44px; border: 1px solid var(--btn-border); border-radius: 9px;
+    background: var(--btn); color: var(--btn-text); font-size: 15px;
+    padding: 8px 12px; cursor: pointer; touch-action: manipulation;
+  }
+  button.primary { background: var(--primary); border-color: var(--primary-border); color: #fff; font-weight: bold; }
+  button:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; align-items: center; }
+  .clock { font-variant-numeric: tabular-nums; font-weight: bold; font-size: 20px; }
+  .left { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--muted); }
+  .left.over { color: var(--warn); font-weight: bold; }
+  .timeline { display: flex; align-items: center; gap: 9px; margin-top: 8px; }
+  input[type="range"] { accent-color: var(--accent); min-height: 32px; min-width: 0; }
+  input[type="checkbox"] { accent-color: var(--accent); width: 20px; height: 20px; }
+  #seek { flex: 1; width: 100%; }
+  #total { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* いまのスライドと、次のスライドへ移る合図 */
+  .slidebar { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 15px; }
+  .slidebar .nav { min-width: 44px; padding: 8px 0; flex: none; }
+  #slideNow {
+    flex: 1; min-width: 0; font-weight: bold; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* 再生中は説明を隠して原稿を広く見せる */
+  .app.playing #modeHint { display: none; }
+  #slideNow .num { color: var(--accent-text); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  #slideNext {
+    color: #111827; background: #fbbf24; border-radius: 999px;
+    padding: 3px 10px; font-weight: bold; font-size: 14px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 45%;
+  }
+
+  .reader-wrap { position: relative; flex: 1; min-height: 0; }
+  #reader {
+    height: 100%; overflow-y: auto; overscroll-behavior: contain;
+    padding: 35vh 16px; scrollbar-width: thin;
+  }
+  .slide-head {
+    display: flex; gap: 8px; align-items: baseline;
+    margin: 26px 0 10px; padding: 6px 4px; border-bottom: 1px solid var(--rule);
+    color: var(--accent-text); font-size: 15px; cursor: pointer;
+  }
+  .slide-head:first-child { margin-top: 0; }
+  .slide-head .time { margin-left: auto; color: var(--past); font-variant-numeric: tabular-nums; font-size: 13px; }
+  .slide-head.current { color: var(--text); border-bottom-color: var(--accent); }
+  .line {
+    position: relative; overflow: hidden;
+    font-size: var(--font-size); line-height: 1.65;
+    padding: 16px 14px; border-radius: 12px; margin-bottom: 12px;
+    color: var(--upcoming); overflow-wrap: anywhere; cursor: pointer;
+  }
+  .line.active { background: var(--active-bg); color: var(--active-text); box-shadow: inset 4px 0 var(--accent); }
+  .line.past { color: var(--past); }
+  /* 今のキューの残り時間（開始から終了まで伸びる） */
+  .line .bar {
+    position: absolute; left: 0; bottom: 0; height: 4px; width: 100%;
+    background: var(--accent); transform-origin: left; transform: scaleX(0); display: none;
+  }
+  .line.active .bar { display: block; }
+  .stamp { display: block; font-size: 13px; color: var(--accent-text); margin-bottom: 5px; font-variant-numeric: tabular-nums; }
+  .hint { font-size: 12px; color: var(--muted); padding-top: 6px; }
+  .toggle { display: flex; gap: 7px; align-items: center; min-height: 44px; font-size: 15px; }
+  summary { cursor: pointer; min-height: 36px; padding: 8px 0 0; font-size: 14px; color: var(--muted); }
+  details[open] .panel { max-height: 45vh; overflow-y: auto; padding-top: 6px; }
+  textarea {
+    display: block; width: 100%; height: 160px; resize: vertical;
+    border: 1px solid var(--btn-border); border-radius: 8px; background: var(--bg);
+    color: var(--text); padding: 10px; font: 15px/1.5 monospace;
+  }
+  .editor-buttons { display: flex; flex-wrap: wrap; gap: 7px; margin: 9px 0; }
+  .settings { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 14px; margin-bottom: 9px; }
+  .settings label { display: flex; gap: 7px; align-items: center; min-height: 36px; }
+  .panel a { color: var(--accent-text); }
+  #font { width: 100px; }
+  #status { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+  #status:empty { display: none; }
+  #reader.mirror .line, #reader.mirror .slide-head, #reader.mirror #blindHint { transform: scaleX(-1); }
+  [hidden] { display: none !important; }
+
+  /* 暗記モードでは直前の1行だけを表示する */
+  #reader.blind .line, #reader.blind .slide-head { display: none; }
+  #reader.blind .line.previous {
+    display: block; color: var(--text); background: var(--blind-bg);
+    box-shadow: inset 4px 0 #fbbf24; cursor: default;
+  }
+  #reader.blind .line.previous .bar { display: none; }
+  #reader.blind { padding-top: 24px; padding-bottom: 24px; }
+  #blindHint {
+    font-size: var(--font-size); line-height: 1.65;
+    padding: 16px 14px; color: var(--muted);
+  }
+  @media (min-width: 800px) {
+    #reader {
+      padding-left: max(20px, calc((100% - 900px)/2));
+      padding-right: max(20px, calc((100% - 900px)/2));
+    }
+  }
+  @media (max-height: 450px) {
+    header { padding: 5px 10px; }
+    .controls, .slidebar { margin-top: 4px; }
+    .hint { display: none; }
+    .line { padding: 8px 12px; margin-bottom: 6px; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <div class="top">
+      <a class="back" href="/android_app/prompter/#/prompter">← 一覧</a>
+      <h1 id="title">2026 同門会 プロンプター</h1>
+      <button id="fullscreen" aria-label="全画面切り替え">全画面</button>
+    </div>
+    <div class="controls">
+      <button id="play" class="primary">▶ 再生</button>
+      <button id="reset">先頭へ</button>
+      <button id="back">−10秒</button>
+      <label>速度
+        <select id="speed" aria-label="再生速度">
+          <option value="0.75">0.75倍</option>
+          <option value="0.9">0.9倍</option>
+          <option value="1" selected>1.0倍</option>
+          <option value="1.1">1.1倍</option>
+          <option value="1.25">1.25倍</option>
+          <option value="1.5">1.5倍</option>
+        </select>
+      </label>
+      <span id="clock" class="clock">00:00</span>
+      <span id="left" class="left"></span>
+      <label class="toggle"><input id="light" type="checkbox"> ☀ 明るい表示</label>
+      <label class="toggle"><input id="blind" type="checkbox"> 暗記モード</label>
+      <label class="toggle tts-only"><input id="tts" type="checkbox"> 🔊 読み上げ</label>
+      <button id="speakNow" class="tts-only">🔊 今の行</button>
+    </div>
+    <div class="timeline">
+      <input id="seek" type="range" min="0" max="360" step="0.1" value="0" aria-label="読み上げ位置">
+      <span id="total">06:00</span>
+    </div>
+    <div class="slidebar">
+      <button id="prevSlide" class="nav" aria-label="前のスライドの先頭へ">◀</button>
+      <span id="slideNow" aria-live="polite"></span>
+      <span id="slideNext" hidden></span>
+      <button id="nextSlide" class="nav" aria-label="次のスライドの先頭へ">▶</button>
+    </div>
+    <details id="editorDetails">
+      <summary>⚙ 表示設定・原稿の編集</summary>
+      <div class="panel">
+        <div class="settings">
+          <label>文字 <input id="font" type="range" min="20" max="60" value="30" aria-label="文字サイズ"> <span id="fontValue">30</span></label>
+          <label><input id="mirror" type="checkbox"> 左右反転</label>
+          <label><input id="awake" type="checkbox" checked> 画面を消さない（停止中も）</label>
+          <label class="tts-only">読み上げの声 <select id="voice" aria-label="端末読み上げの声"><option value="">自動（日本語）</option></select></label>
+          <button id="center">表示行へ</button>
+        </div>
+        <textarea id="source" spellcheck="false" aria-label="VTT原稿"></textarea>
+        <div class="editor-buttons">
+          <button id="apply" class="primary">原稿を反映</button>
+          <label class="file-label" for="file">VTTを開く</label>
+          <input id="file" type="file" accept=".vtt,text/vtt,.txt,text/plain" hidden>
+          <button id="download">VTTを保存</button>
+          <button id="sample">配信中の原稿に戻す</button>
+        </div>
+        <div class="hint">WebVTT（UTF-8）。「NOTE スライド 5: 見出し」の行でスライドを区切ります。
+          時刻は tools/script_to_vtt.py で読む速さから割り当てています。
+          <a id="scriptLink" href="relaxin2026.md" target="_blank" rel="noopener">スライドごとの読み原稿（.md）</a></div>
+      </div>
+    </details>
+    <div id="modeHint" class="hint"></div>
+    <p id="status" role="status"></p>
+  </header>
+  <section class="reader-wrap" aria-label="読み上げ原稿">
+    <div id="reader"></div>
+  </section>
+</main>
+<script>
+"use strict";
+// 発表ごとに変えるのはここだけ。原稿は tools/scripts/<名前>.md から tools/script_to_vtt.py で作る。
+const TALK = {
+  title: "2026 同門会 RXFP1",
+  script: "relaxin2026.vtt",
+  limit: 360,                 // 持ち時間（秒）。残り時間はこれを基準に出す
+  storage: "vtt-prompter-relaxin2026-v1",
+  download: "relaxin2026.vtt",
+};
+const $ = id => document.getElementById(id);
+let cues = [], slides = [], nodes = [], heads = [];
+let duration = TALK.limit, elapsed = 0;
+let playing = false, lastTick = 0, raf = 0, active = -2, shownSlide = -2;
+let wake = null, wakePending = false, wakeWarned = false, storageAvailable = true;
+let playbackSpeed = 1, blindHint = null;
+const speech = "speechSynthesis" in window ? window.speechSynthesis : null;
+let spokenIndex = -2, savedVoice = "";
+// 原稿を手で変えたか。変えていなければ、起動時に配信中の最新の原稿を読み込む
+let edited = false, published = "";
+
+function saved() {
+  try { return JSON.parse(localStorage.getItem(TALK.storage) || "{}") || {}; }
+  catch { return {}; }
+}
+function save() {
+  edited = edited && $("source").value !== published;
+  try {
+    localStorage.setItem(TALK.storage, JSON.stringify({
+      source: $("source").value, font: $("font").value,
+      mirror: $("mirror").checked, speed: $("speed").value,
+      blind: $("blind").checked, sound: $("tts").checked,
+      light: $("light").checked, awake: $("awake").checked,
+      voice: $("voice").value || savedVoice, edited
+    }));
+    storageAvailable = true;
+  } catch { storageAvailable = false; }
+}
+function message(text) { $("status").textContent = text; }
+function format(sec) {
+  const sign = sec < 0 ? "−" : "";
+  sec = Math.floor(Math.abs(sec));
+  return sign + String(Math.floor(sec / 60)).padStart(2, "0") + ":" +
+    String(sec % 60).padStart(2, "0");
+}
+function formatTenth(sec) {
+  const m = Math.floor(sec / 60);
+  return m + ":" + (sec - m * 60).toFixed(1).padStart(4, "0");
+}
+
+// ---- WebVTT の読み込み ----
+function parseTime(text) {
+  const m = text.trim().match(/^(?:(\d+):)?([0-5]?\d):([0-5]\d)[.,](\d{3})$/);
+  if (!m) return NaN;
+  return Number(m[1] || 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4]) / 1000;
+}
+function plainText(text) {
+  // 字幕のタグ（<v 話者> や <b>）は表示しない
+  const box = document.createElement("textarea");
+  box.innerHTML = text.replace(/<[^>]*>/g, "");
+  return box.value.trim();
+}
+function parseVtt(text) {
+  const blocks = text.replace(/^﻿/, "").replace(/\r\n?/g, "\n").split(/\n[ \t]*\n/);
+  if (!/^WEBVTT(?:[ \t]|$)/.test(blocks[0].trim())) {
+    throw new Error("先頭の行が WEBVTT ではありません。");
+  }
+  const list = [], groups = [];
+  let slide = null;
+  const openSlide = (number, title) => {
+    slide = { number, title, cues: [] };
+    groups.push(slide);
+  };
+  for (const block of blocks.slice(1)) {
+    const lines = block.split("\n").filter(line => line.trim());
+    if (!lines.length) continue;
+    if (/^NOTE(?:[ \t]|$)/.test(lines[0])) {
+      const note = lines.join(" ").replace(/^NOTE[ \t]*/, "").trim();
+      const m = note.match(/^スライド\s*(\d+)\s*[:：]?\s*(.*)$/);
+      if (m) openSlide(Number(m[1]), m[2].trim());
+      continue;
+    }
+    if (/^(STYLE|REGION)(?:[ \t]|$)/.test(lines[0])) continue;
+    let i = 0, id = "";
+    if (!lines[0].includes("-->")) { id = lines[0].trim(); i = 1; }
+    const timing = lines[i];
+    if (!timing || !timing.includes("-->")) {
+      throw new Error(`時刻の行がありません：${lines[0]}`);
+    }
+    const [from, rest] = timing.split("-->");
+    const start = parseTime(from), end = parseTime(rest.trim().split(/\s+/)[0]);
+    if (!(end > start)) throw new Error(`時刻が読めないか、終わりが始まりより前です：${timing}`);
+    const body = plainText(lines.slice(i + 1).join(" "));
+    if (!body) continue;
+    // NOTE がなくても、識別子 sNN-MM からスライドを決める
+    const fromId = id.match(/^s(\d+)-/);
+    if (fromId && (!slide || slide.number !== Number(fromId[1]))) {
+      openSlide(Number(fromId[1]), "");
+    }
+    if (!slide) openSlide(1, "");
+    const cue = { id, start, end, text: body, slide };
+    slide.cues.push(cue);
+    list.push(cue);
+  }
+  if (!list.length) throw new Error("キューがありません。");
+  for (let i = 1; i < list.length; i++) {
+    if (list[i].start < list[i - 1].start) throw new Error(`キューが時刻順に並んでいません：${list[i].id || list[i].text}`);
+  }
+  const used = groups.filter(group => group.cues.length);
+  used.forEach((group, index) => { group.index = index; });
+  return { cues: list, slides: used };
+}
+
+// ---- 表示 ----
+function visibleIndex() {
+  // 終了時には最後の行も読み終えたものとして表示する。
+  if ($("blind").checked) {
+    return elapsed >= duration ? cues.length - 1 : active - 1;
+  }
+  return active;
+}
+function centerLine(smooth = true) {
+  const reader = $("reader");
+  if ($("blind").checked) {
+    reader.scrollTo({ top: 0, behavior: "auto" });
+    return;
+  }
+  const node = nodes[visibleIndex()] || heads[0];
+  if (!node) return;
+  reader.scrollTo({
+    top: node.offsetTop - reader.clientHeight / 2 + node.offsetHeight / 2,
+    behavior: smooth ? "smooth" : "auto"
+  });
+}
+function currentIndex() {
+  let index = -1;
+  for (let i = 0; i < cues.length; i++) {
+    if (cues[i].start <= elapsed) index = i;
+    else break;
+  }
+  return index;
+}
+function renderSlide() {
+  const cue = cues[Math.max(active, 0)];
+  const slide = cue ? cue.slide : null;
+  const index = slide ? slide.index : -1;
+  if (!slide) { $("slideNow").textContent = ""; return; }
+  // スライドの最後のキューに入ったら、次のスライドを出す
+  const next = slides[index + 1];
+  const lastOfSlide = active >= 0 && slide.cues[slide.cues.length - 1] === cue;
+  $("slideNext").hidden = !(next && lastOfSlide && elapsed < duration);
+  if (next) $("slideNext").textContent = `次 → ${next.number}${next.title ? " " + next.title : ""}`;
+  if (index === shownSlide) return;
+  shownSlide = index;
+  const num = document.createElement("span");
+  num.className = "num";
+  num.textContent = `${slide.number}/${slides[slides.length - 1].number}`;
+  $("slideNow").replaceChildren(num, document.createTextNode(slide.title));
+  heads.forEach((head, i) => head.classList.toggle("current", i === index));
+}
+function renderBar() {
+  const node = nodes[active];
+  if (!node || $("blind").checked) return;
+  const cue = cues[active];
+  const p = Math.max(0, Math.min(1, (elapsed - cue.start) / (cue.end - cue.start)));
+  node.querySelector(".bar").style.transform = `scaleX(${p})`;
+}
+function renderTime(force = false) {
+  $("clock").textContent = format(elapsed);
+  $("seek").value = elapsed;
+  const left = TALK.limit - elapsed;
+  $("left").textContent = `持ち時間 残り ${format(left)}`;
+  $("left").classList.toggle("over", left < 10);
+  const index = currentIndex();
+  const finishedChanged = $("reader").classList.contains("finished") !== (elapsed >= duration);
+  if (force || index !== active || finishedChanged) {
+    active = index;
+    const blind = $("blind").checked;
+    const previous = visibleIndex();
+    $("reader").classList.toggle("blind", blind);
+    $("reader").classList.toggle("finished", elapsed >= duration);
+    $("modeHint").textContent = blind
+      ? "暗記モード：表示は1つ前の行だけ。今の内容を思い出して話してください。"
+      : "色の付いた行が今のキューです。下の線が端まで伸びたら次の行へ。行や見出しをタップすると、その時刻へ移動します。";
+    nodes.forEach((node, i) => {
+      node.classList.toggle("active", i === active);
+      node.classList.toggle("past", i < active);
+      node.classList.toggle("previous", blind && i === previous);
+      node.tabIndex = blind ? -1 : 0;
+      if (blind) node.removeAttribute("role");
+      else node.setAttribute("role", "button");
+      if (!blind && i === active) node.setAttribute("aria-current", "true");
+      else node.removeAttribute("aria-current");
+      node.querySelector(".stamp").textContent = (blind ? "1つ前の内容 · " : "") +
+        `${formatTenth(cues[i].start)} – ${formatTenth(cues[i].end)}`;
+    });
+    if (blindHint) {
+      blindHint.hidden = !blind || previous >= 0;
+      blindHint.textContent = active < 0
+        ? "開始時刻まで待機しています。"
+        : "最初の内容を思い出してください。";
+    }
+    centerLine(!force);
+  }
+  renderSlide();
+  renderBar();
+  if (playing && $("tts").checked && active >= 0 && active !== spokenIndex) {
+    spokenIndex = active;
+    speakText(cues[active].text);
+  }
+}
+
+// ---- 端末の読み上げ（Android では Google TTS） ----
+function loadVoices() {
+  if (!speech) return;
+  const voices = speech.getVoices().filter(v => /^ja\b/i.test(v.lang));
+  const select = $("voice");
+  const current = select.value || savedVoice;
+  select.replaceChildren(new Option("自動（日本語）", ""));
+  for (const v of voices) select.add(new Option(v.name, v.name));
+  if (voices.some(v => v.name === current)) select.value = current;
+}
+function speakText(text) {
+  if (!speech || !text) return;
+  speech.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "ja-JP";
+  utter.rate = playbackSpeed;
+  const name = $("voice").value;
+  const voices = speech.getVoices();
+  utter.voice = voices.find(v => v.name === name) ||
+    voices.find(v => /^ja\b/i.test(v.lang) && /google/i.test(v.name)) ||
+    voices.find(v => /^ja\b/i.test(v.lang)) || null;
+  speech.speak(utter);
+}
+function stopSpeech() {
+  spokenIndex = -2;
+  if (speech) speech.cancel();
+}
+
+// ---- 再生 ----
+// 画面を消さない。既定では再生中だけでなく、ページを開いている間ずっと保つ
+// （出番待ちや一時停止のあいだに Android が画面を暗くしたり消したりしないように）
+function wantWake() { return !document.hidden && (playing || $("awake").checked); }
+async function acquireWake() {
+  if (!("wakeLock" in navigator) || !wantWake() || wake || wakePending) return;
+  wakePending = true;
+  try {
+    const lock = await navigator.wakeLock.request("screen");
+    if (!wantWake()) { await lock.release(); return; }
+    wake = lock;
+    lock.addEventListener("release", () => { if (wake === lock) wake = null; });
+  } catch {
+    // 毎回出すとうるさいので 1 回だけ知らせる
+    if (!wakeWarned) message("画面消灯防止を利用できません。端末の画面タイムアウトを長くしてください。");
+    wakeWarned = true;
+  } finally { wakePending = false; }
+}
+function releaseWake() {
+  const lock = wake;
+  wake = null;
+  if (lock) lock.release().catch(() => {});
+}
+function syncTime(now = performance.now()) {
+  if (playing) elapsed = Math.min(duration, elapsed + (now - lastTick) / 1000 * playbackSpeed);
+  lastTick = now;
+}
+function pause(silence = true) {
+  syncTime();
+  if (silence) stopSpeech();
+  playing = false;
+  document.querySelector(".app").classList.remove("playing");
+  cancelAnimationFrame(raf);
+  $("play").textContent = "▶ 再生";
+  if (!wantWake()) releaseWake();
+  renderTime();
+}
+function tick(now) {
+  if (!playing) return;
+  syncTime(now);
+  renderTime();
+  if (elapsed >= duration) {
+    pause(false);
+    message(`読み上げ終了です（${format(elapsed)}）。`);
+    return;
+  }
+  raf = requestAnimationFrame(tick);
+}
+function start() {
+  if (!cues.length) return;
+  if (elapsed >= duration) elapsed = 0;
+  playing = true;
+  document.querySelector(".app").classList.add("playing");
+  lastTick = performance.now();
+  $("play").textContent = "❚❚ 一時停止";
+  message($("blind").checked
+    ? "暗記練習中。現在の行は非表示です。"
+    : "再生中。時間に合わせて自動スクロールします。");
+  acquireWake();
+  renderTime(true);
+  raf = requestAnimationFrame(tick);
+}
+function jump(time) {
+  if (playing) stopSpeech();
+  elapsed = Math.max(0, Math.min(duration, time));
+  lastTick = performance.now();
+  renderTime(true);
+}
+function jumpSlide(step) {
+  syncTime();
+  const cue = cues[Math.max(active, 0)];
+  if (!cue) return;
+  let index = cue.slide.index;
+  // 「前」はスライドの途中なら、まずそのスライドの先頭へ
+  if (step < 0 && elapsed - cue.slide.cues[0].start > 1.5) step = 0;
+  index = Math.max(0, Math.min(slides.length - 1, index + step));
+  jump(slides[index].cues[0].start);
+}
+
+function apply(text, persist = true) {
+  let parsed;
+  try { parsed = parseVtt(text); }
+  catch (error) { message(`原稿を読めませんでした：${error.message}`); return false; }
+  pause();
+  ({ cues, slides } = parsed);
+  const lastEnd = cues[cues.length - 1].end;
+  duration = lastEnd + 1;
+  elapsed = 0;
+  active = -2;
+  shownSlide = -2;
+  $("seek").max = duration;
+  $("total").textContent = format(lastEnd);
+  const reader = $("reader");
+  reader.replaceChildren();
+  blindHint = document.createElement("div");
+  blindHint.id = "blindHint";
+  blindHint.hidden = true;
+  reader.appendChild(blindHint);
+  nodes = [];
+  heads = slides.map(slide => {
+    const head = document.createElement("div");
+    head.className = "slide-head";
+    head.setAttribute("role", "button");
+    head.tabIndex = 0;
+    const label = document.createElement("span");
+    label.textContent = `スライド ${slide.number}${slide.title ? "　" + slide.title : ""}`;
+    const time = document.createElement("span");
+    time.className = "time";
+    time.textContent = formatTenth(slide.cues[0].start);
+    head.append(label, time);
+    const go = () => { if (!$("blind").checked) jump(slide.cues[0].start); };
+    head.addEventListener("click", go);
+    head.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); go(); }
+    });
+    reader.appendChild(head);
+    for (const cue of slide.cues) {
+      const index = nodes.length;
+      const node = document.createElement("div");
+      node.className = "line";
+      const stamp = document.createElement("span");
+      stamp.className = "stamp";
+      const body = document.createElement("span");
+      body.textContent = cue.text;
+      const bar = document.createElement("span");
+      bar.className = "bar";
+      node.append(stamp, body, bar);
+      node.addEventListener("click", () => {
+        if (!$("blind").checked) jump(cues[index].start);
+      });
+      node.addEventListener("keydown", event => {
+        if (!$("blind").checked && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          jump(cues[index].start);
+        }
+      });
+      reader.appendChild(node);
+      nodes.push(node);
+    }
+    return head;
+  });
+  if (persist) save();
+  renderTime(true);
+  const chars = cues.reduce((sum, cue) => sum + cue.text.length, 0);
+  message(`${slides.length}枚・${cues.length}行・${chars}字・最後の行の終わり ${formatTenth(lastEnd)}` +
+    `（持ち時間 ${format(TALK.limit)}）。` +
+    (storageAvailable ? "原稿はこのブラウザに保存されます。" : "自動保存できません。VTTを保存してください。"));
+  return true;
+}
+function setTheme() {
+  const light = $("light").checked;
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  document.querySelector('meta[name="theme-color"]').content = light ? "#f1f5f9" : "#111827";
+}
+function setFont() {
+  document.documentElement.style.setProperty("--font-size", $("font").value + "px");
+  $("fontValue").textContent = $("font").value;
+  centerLine(false);
+}
+
+$("play").addEventListener("click", () => playing ? pause() : start());
+$("reset").addEventListener("click", () => { pause(); jump(0); message("先頭に戻しました。"); });
+$("back").addEventListener("click", () => { syncTime(); jump(elapsed - 10); });
+$("prevSlide").addEventListener("click", () => jumpSlide(-1));
+$("nextSlide").addEventListener("click", () => jumpSlide(1));
+$("seek").addEventListener("input", () => jump(Number($("seek").value)));
+$("speed").addEventListener("change", () => {
+  syncTime();
+  playbackSpeed = Number($("speed").value);
+  save(); renderTime();
+});
+$("tts").addEventListener("change", () => {
+  if ($("tts").checked) { spokenIndex = -2; renderTime(); }
+  else stopSpeech();
+  save();
+  message($("tts").checked ? "端末の読み上げON" : "読み上げOFF（画面だけ進みます）");
+});
+$("speakNow").addEventListener("click", () => {
+  // 暗記モードで詰まったときのヒントにも使える
+  const index = Math.max(0, Math.min(active, cues.length - 1));
+  if (cues[index]) speakText(cues[index].text);
+});
+$("voice").addEventListener("change", () => {
+  savedVoice = $("voice").value;
+  save();
+  speakText("この声で読み上げます。");
+});
+$("blind").addEventListener("change", () => {
+  syncTime();
+  renderTime(true);
+  save();
+  message($("blind").checked
+    ? "暗記モード：現在の行以降を隠し、直前の1行だけ表示します。"
+    : "通常モードに戻しました。");
+});
+$("font").addEventListener("input", () => { setFont(); save(); });
+$("light").addEventListener("change", () => {
+  setTheme(); save();
+  message($("light").checked
+    ? "明るい表示（白地に黒字）にしました。端末の明るさは、Android の設定で最大にしてください。"
+    : "暗い表示に戻しました。");
+});
+$("awake").addEventListener("change", () => {
+  save();
+  if (wantWake()) acquireWake(); else releaseWake();
+});
+// 起動直後は許可されないことがあるので、最初に触ったときにも画面を消さない設定をかけ直す
+document.addEventListener("pointerdown", () => acquireWake(), { passive: true });
+$("mirror").addEventListener("change", () => {
+  $("reader").classList.toggle("mirror", $("mirror").checked);
+  save();
+});
+$("center").addEventListener("click", () => centerLine());
+$("apply").addEventListener("click", () => {
+  if (apply($("source").value)) {
+    $("editorDetails").open = false;
+    requestAnimationFrame(() => centerLine(false));
+  }
+});
+$("source").addEventListener("input", () => { edited = true; save(); });
+$("sample").addEventListener("click", () => {
+  if (!published) { message("配信中の原稿を読み込めていません。"); return; }
+  if (!confirm("編集中の原稿を、配信中の原稿に置き換えますか？")) return;
+  edited = false;
+  $("source").value = published;
+  apply(published);
+});
+$("file").addEventListener("change", async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    edited = true;
+    $("source").value = text;
+    if (apply(text)) {
+      $("editorDetails").open = false;
+      requestAnimationFrame(() => centerLine(false));
+    }
+  } catch { message("ファイルを読み込めませんでした。"); }
+  event.target.value = "";
+});
+$("download").addEventListener("click", () => {
+  const blob = new Blob([$("source").value], { type: "text/vtt;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = TALK.download;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+});
+$("fullscreen").addEventListener("click", async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    } else message("このブラウザは全画面表示に対応していません。");
+  } catch { message("全画面表示に切り替えられませんでした。"); }
+});
+document.addEventListener("fullscreenchange", () => {
+  $("fullscreen").textContent = document.fullscreenElement ? "全画面解除" : "全画面";
+  requestAnimationFrame(() => centerLine(false));
+});
+// キーボード（Bluetooth キーボードや PC で練習するとき）：Space 再生/停止、←→ 前後のスライド
+document.addEventListener("keydown", event => {
+  const target = event.target;
+  if (target.closest && target.closest("textarea, input, select, button, .line, .slide-head, summary")) return;
+  if (event.key === " ") { event.preventDefault(); playing ? pause() : start(); }
+  else if (event.key === "ArrowRight" || event.key === "PageDown") { event.preventDefault(); jumpSlide(1); }
+  else if (event.key === "ArrowLeft" || event.key === "PageUp") { event.preventDefault(); jumpSlide(-1); }
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) acquireWake();
+});
+window.addEventListener("resize", () => centerLine(false));
+$("editorDetails").addEventListener("toggle", () => {
+  requestAnimationFrame(() => centerLine(false));
+});
+
+document.title = `${TALK.title} プロンプター`;
+$("title").textContent = TALK.title;
+const state = saved();
+if (state.font && Number(state.font) >= 20 && Number(state.font) <= 60) {
+  $("font").value = state.font;
+}
+if ([...$("speed").options].some(option => option.value === state.speed)) {
+  $("speed").value = state.speed;
+}
+playbackSpeed = Number($("speed").value);
+$("mirror").checked = !!state.mirror;
+$("blind").checked = !!state.blind;
+$("light").checked = !!state.light;
+$("awake").checked = state.awake !== false;
+setTheme();
+$("tts").checked = !!speech && state.sound === true;
+savedVoice = typeof state.voice === "string" ? state.voice : "";
+edited = state.edited === true;
+if (speech) {
+  loadVoices();
+  speech.addEventListener("voiceschanged", loadVoices);
+} else {
+  document.querySelectorAll(".tts-only").forEach(el => { el.hidden = true; });
+}
+$("reader").classList.toggle("mirror", $("mirror").checked);
+setFont();
+$("source").value = typeof state.source === "string" ? state.source : "";
+
+async function init() {
+  try {
+    const response = await fetch(TALK.script);
+    if (response.ok) published = await response.text();
+  } catch { /* オフラインで未キャッシュ */ }
+  // 手で変えていない原稿は、保存済みでも配信中の最新の原稿に置き換える
+  if (published && (!edited || !$("source").value.trim())) {
+    edited = false;
+    $("source").value = published;
+  }
+  if (!apply($("source").value, false)) $("editorDetails").open = true;
+}
+init();
+acquireWake();
+
+// オフラインでも使えるよう、他のアプリと共通の Service Worker を登録する
+if ("serviceWorker" in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  // 新しい版が配信されたら読み込み直す。発表中（再生中）は止めずに知らせるだけにする。
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloading) return;
+    if (playing) { message("新しい版があります。停止後に再読み込みしてください。"); return; }
+    reloading = true;
+    location.reload();
+  });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/android_app/sw.js", { scope: "/android_app/" })
+      .then(registration => {
+        // ホーム画面のアプリは再読み込みされずに再開することが多いので、前面に戻るたびに更新を確認する
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") registration.update().catch(() => {});
+        });
+      })
+      .catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
