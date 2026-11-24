@@ -62,10 +62,15 @@ def group_sentences(lines: list[str]) -> list[list[int]]:
     return groups
 
 
+def cache_path(text: str, voice: str, style: str, model: str) -> Path:
+    """合成済みの音声を置くキャッシュのファイル。"""
+    digest = hashlib.sha256(json.dumps([model, voice, style, text]).encode()).hexdigest()[:24]
+    return CACHE_DIR / f"{digest}.pcm"
+
+
 def synthesize(text: str, voice: str, style: str, model: str, key: str) -> bytes:
     """1 文を合成して生 PCM を返す。結果はキャッシュする。"""
-    digest = hashlib.sha256(json.dumps([model, voice, style, text]).encode()).hexdigest()[:24]
-    cached = CACHE_DIR / f"{digest}.pcm"
+    cached = cache_path(text, voice, style, model)
     if cached.exists():
         return cached.read_bytes()
 

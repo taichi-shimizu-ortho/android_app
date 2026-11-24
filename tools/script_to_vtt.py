@@ -62,6 +62,7 @@ READINGS = {
     "Sox-9": "ソックス・ナイン",
     "雌": "メス",
     "雄": "オス",
+    "本研究": "ほんけんきゅう",  # 「こんけんきゅう」と読まれた
 }
 
 
@@ -169,12 +170,22 @@ def spoken(text: str) -> str:
 
 
 def tts_lengths(cues: list[Cue], gaps: list[float], voice: str, style: str,
-                model: str, key: str) -> tuple[list[float], array.array]:
-    """文ごとに TTS で合成し、各キューの長さ（秒）と、間を入れてつないだ音声（PCM）を返す。"""
+                model: str, key: str, cache_only: bool = False
+                ) -> tuple[list[float], array.array, list[str]]:
+    """文ごとに TTS で合成し、各キューの長さ（秒）と、間を入れてつないだ音声（PCM）を返す。
+
+    cache_only のときは API を呼ばない。まだ合成していない文は、合成済みの文の平均の速さ（字/秒）で
+    長さを見積もり、音声はその長さの無音にする。見積もった文の一覧も返す。
+    """
     import lrc_tts  # 同じ tools/ にある。合成とキャッシュはそちらと共通
+
+    rate = lrc_tts.SAMPLE_RATE
 
     def measure(text: str) -> array.array:
         return lrc_tts.trim_silence(lrc_tts.synthesize(spoken(text), voice, style, model, key))
+
+    def ready(texts: list[str]) -> bool:
+        return all(lrc_tts.cache_path(spoken(t), voice, style, model).exists() for t in texts)
 
     # 文は「。」で終わるキューか、スライドの最後のキューで切る
     groups: list[list[int]] = []
@@ -186,18 +197,38 @@ def tts_lengths(cues: list[Cue], gaps: list[float], voice: str, style: str,
             current = []
 
     lengths = [0.0] * len(cues)
-    audio = array.array("h")
+    pieces: list[array.array | None] = []
+    missing: list[str] = []
+    spoken_chars = spoken_seconds = 0.0
     for n, group in enumerate(groups, 1):
         text = join([cues[i].text for i in group])
+        parts = [cues[i].text for i in group] if len(group) > 1 else []
+        if cache_only and not ready([text] + parts):
+            print(f"[{n}/{len(groups)}] 未合成（無音で見積もる）: {text[:36]}…", flush=True)
+            pieces.append(None)
+            missing.append(text)
+            continue
         print(f"[{n}/{len(groups)}] {text[:36]}…", flush=True)
         samples = measure(text)
-        total = len(samples) / lrc_tts.SAMPLE_RATE
-        weights = [1] if len(group) == 1 else [len(measure(cues[i].text)) for i in group]
+        total = len(samples) / rate
+        spoken_chars += count(text)
+        spoken_seconds += total
+        weights = [1] if len(group) == 1 else [len(measure(t)) for t in parts]
         for i, weight in zip(group, weights):
             lengths[i] = total * weight / sum(weights)
+        pieces.append(samples)
+
+    audio = array.array("h")
+    for group, samples in zip(groups, pieces):
+        if samples is None:
+            # 合成済みの文の平均の速さで見積もり、キューには字数の比で分ける
+            total = count(join([cues[i].text for i in group])) * spoken_seconds / spoken_chars
+            for i in group:
+                lengths[i] = total * count(cues[i].text) / sum(count(cues[j].text) for j in group)
+            samples = array.array("h", bytes(int(total * rate) * 2))
         audio.extend(samples)
-        audio.extend(array.array("h", bytes(int(gaps[group[-1]] * lrc_tts.SAMPLE_RATE) * 2)))
-    return lengths, audio
+        audio.extend(array.array("h", bytes(int(gaps[group[-1]] * rate) * 2)))
+    return lengths, audio, missing
 
 
 def place(cues: list[Cue], lengths: list[float], gaps: list[float], end: float,
@@ -329,19 +360,30 @@ def main() -> int:
     parser.add_argument("--voice", default="Charon", help="--tts の声（既定 Charon）")
     parser.add_argument("--model", default="gemini-3.8-flash-tts")
     parser.add_argument("--style", help="--tts の読み方の指示（既定は tools/lrc_tts.py の DEFAULT_STYLE）")
+    parser.add_argument("--cache-only", action="store_true",
+                        help="--tts のとき API を呼ばない。未合成の文は平均の速さで見積もり、音声は無音にする"
+                             "（API の上限に達したときの仮の版）")
     args = parser.parse_args()
+    if args.cache_only and not args.tts:
+        raise SystemExit("--cache-only は --tts と一緒に使う")
 
     title, slides = parse_script(args.script.read_text(encoding="utf-8"))
     cues = make_cues(slides)
     gaps = make_gaps(cues, args.sentence_pause, args.slide_pause)
     if args.tts:
         import lrc_tts
-        key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_TTS_API_KEY")
-        if not key:
+        key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_TTS_API_KEY") or ""
+        if not key and not args.cache_only:
             raise SystemExit("環境変数 GEMINI_API_KEY（または GOOGLE_TTS_API_KEY）が設定されていない")
-        lengths, audio = tts_lengths(cues, gaps, args.voice, args.style or lrc_tts.DEFAULT_STYLE,
-                                     args.model, key)
+        lengths, audio, missing = tts_lengths(cues, gaps, args.voice,
+                                              args.style or lrc_tts.DEFAULT_STYLE, args.model, key,
+                                              args.cache_only)
         method = f"Gemini TTS（{args.model}・声 {args.voice}）で読み上げた長さ"
+        if missing:
+            method += (f"（仮: 未合成の {len(missing)} 文「" + "」「".join(missing) +
+                       "」は、ほかの文の平均の速さで見積もった長さ。音声は無音）")
+            for text in missing:
+                print(f"  注意: 未合成のため無音: {text}", file=sys.stderr)
         tolerance = 0.2 if args.tolerance is None else args.tolerance
     else:
         if args.audio:
