@@ -128,18 +128,21 @@
   #reader.mirror .line, #reader.mirror .slide-head, #reader.mirror #blindHint { transform: scaleX(-1); }
   [hidden] { display: none !important; }
 
-  /* 暗記モードでは直前の1行だけを表示する */
+  /* 暗記モードでは原稿を隠し、今のスライドの番号と見出しだけをヒントに出す */
   #reader.blind .line, #reader.blind .slide-head { display: none; }
-  #reader.blind .line.previous {
-    display: block; color: var(--text); background: var(--blind-bg);
-    box-shadow: inset 4px 0 #fbbf24; cursor: default;
-  }
-  #reader.blind .line.previous .bar { display: none; }
   #reader.blind { padding-top: 24px; padding-bottom: 24px; }
   #blindHint {
-    font-size: var(--font-size); line-height: 1.65;
-    padding: 16px 14px; color: var(--muted);
+    font-size: var(--font-size); line-height: 1.5;
+    padding: 18px 16px; color: var(--muted);
   }
+  #blindHint.card {
+    color: var(--text); background: var(--blind-bg);
+    border-radius: 12px; box-shadow: inset 4px 0 #fbbf24;
+  }
+  #blindHint .num { font-weight: bold; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+  #blindHint .num small { font-size: 0.6em; color: var(--muted); font-weight: normal; }
+  #blindHint .title { font-weight: bold; margin-top: 4px; }
+  #blindHint .pos { font-size: 15px; color: var(--muted); margin-top: 10px; font-variant-numeric: tabular-nums; }
   @media (min-width: 800px) {
     #reader {
       padding-left: max(20px, calc((100% - 900px)/2));
@@ -353,12 +356,32 @@ function matchesPublished(text) {
   const own = cueTexts(text);
   return own !== null && own === cueTexts(published);
 }
-function visibleIndex() {
-  // 終了時には最後の行も読み終えたものとして表示する。
-  if ($("blind").checked) {
-    return elapsed >= duration ? cues.length - 1 : active - 1;
+function renderBlindHint() {
+  // 暗記モードのヒント：今のスライドの番号と見出し、そのスライドの何行目か（本文は出さない）
+  const blind = $("blind").checked;
+  blindHint.hidden = !blind;
+  if (!blind) return;
+  const cue = cues[active];
+  blindHint.classList.toggle("card", !!cue);
+  if (!cue) {
+    blindHint.textContent = "開始時刻まで待機しています。";
+    return;
   }
-  return active;
+  const slide = cue.slide;
+  const num = document.createElement("div");
+  num.className = "num";
+  const total = document.createElement("small");
+  total.textContent = ` / ${slides[slides.length - 1].number}`;
+  num.append(`スライド ${slide.number}`, total);
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = slide.title || "（見出しなし）";
+  const pos = document.createElement("div");
+  pos.className = "pos";
+  pos.textContent = elapsed >= duration
+    ? "最後まで話し終えました。"
+    : `このスライドの ${slide.cues.indexOf(cue) + 1} / ${slide.cues.length} 行目`;
+  blindHint.replaceChildren(num, title, pos);
 }
 function centerLine(smooth = true) {
   const reader = $("reader");
@@ -366,7 +389,7 @@ function centerLine(smooth = true) {
     reader.scrollTo({ top: 0, behavior: "auto" });
     return;
   }
-  const node = nodes[visibleIndex()] || heads[0];
+  const node = nodes[active] || heads[0];
   if (!node) return;
   reader.scrollTo({
     top: node.offsetTop - reader.clientHeight / 2 + node.offsetHeight / 2,
@@ -417,30 +440,23 @@ function renderTime(force = false) {
   if (force || index !== active || finishedChanged) {
     active = index;
     const blind = $("blind").checked;
-    const previous = visibleIndex();
     $("reader").classList.toggle("blind", blind);
     $("reader").classList.toggle("finished", elapsed >= duration);
     $("modeHint").textContent = blind
-      ? "暗記モード：表示は1つ前の行だけ。今の内容を思い出して話してください。"
+      ? "暗記モード：原稿は隠し、今のスライドの番号と見出しだけを出します。詰まったら 🔊 今の行 で答えを聞けます。"
       : "色の付いた行が今のキューです。下の線が端まで伸びたら次の行へ。行や見出しをタップすると、その時刻へ移動します。";
     nodes.forEach((node, i) => {
       node.classList.toggle("active", i === active);
       node.classList.toggle("past", i < active);
-      node.classList.toggle("previous", blind && i === previous);
       node.tabIndex = blind ? -1 : 0;
       if (blind) node.removeAttribute("role");
       else node.setAttribute("role", "button");
       if (!blind && i === active) node.setAttribute("aria-current", "true");
       else node.removeAttribute("aria-current");
-      node.querySelector(".stamp").textContent = (blind ? "1つ前の内容 · " : "") +
+      node.querySelector(".stamp").textContent =
         `${formatTenth(cues[i].start)} – ${formatTenth(cues[i].end)}`;
     });
-    if (blindHint) {
-      blindHint.hidden = !blind || previous >= 0;
-      blindHint.textContent = active < 0
-        ? "開始時刻まで待機しています。"
-        : "最初の内容を思い出してください。";
-    }
+    if (blindHint) renderBlindHint();
     centerLine(!force);
   }
   renderSlide();
@@ -553,7 +569,7 @@ function start() {
   if (useAudio) playAudioFrom(elapsed);
   $("play").textContent = "❚❚ 一時停止";
   message($("blind").checked
-    ? "暗記練習中。現在の行は非表示です。"
+    ? "暗記練習中。原稿は隠し、スライドの番号と見出しだけを出しています。"
     : "再生中。時間に合わせて自動スクロールします。");
   acquireWake();
   renderTime(true);
@@ -721,7 +737,7 @@ $("blind").addEventListener("change", () => {
   renderTime(true);
   save();
   message($("blind").checked
-    ? "暗記モード：現在の行以降を隠し、直前の1行だけ表示します。"
+    ? "暗記モード：原稿を隠し、今のスライドの番号と見出しだけをヒントに出します。"
     : "通常モードに戻しました。");
 });
 $("font").addEventListener("input", () => { setFont(); save(); });
