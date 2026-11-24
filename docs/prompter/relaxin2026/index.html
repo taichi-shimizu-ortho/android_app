@@ -180,8 +180,8 @@
       <span id="left" class="left"></span>
       <label class="toggle"><input id="light" type="checkbox"> ☀ 明るい表示</label>
       <label class="toggle"><input id="blind" type="checkbox"> 暗記モード</label>
-      <label class="toggle tts-only"><input id="tts" type="checkbox"> 🔊 読み上げ</label>
-      <button id="speakNow" class="tts-only">🔊 今の行</button>
+      <label class="toggle tts-only sound"><input id="tts" type="checkbox"> 🔊 読み上げ</label>
+      <button id="speakNow" class="tts-only sound">🔊 今の行</button>
     </div>
     <div class="timeline">
       <input id="seek" type="range" min="0" max="360" step="0.1" value="0" aria-label="読み上げ位置">
@@ -213,6 +213,7 @@
         </div>
         <div class="hint">WebVTT（UTF-8）。「NOTE スライド 5: 見出し」の行でスライドを区切ります。
           時刻は tools/script_to_vtt.py で Gemini TTS の読み上げに合わせています。
+          配信中の原稿のままなら、🔊 読み上げはその録音音声を流します（原稿を変えると端末の読み上げ）。
           <a id="scriptLink" href="relaxin2026.md" target="_blank" rel="noopener">スライドごとの読み原稿（.md）</a></div>
       </div>
     </details>
@@ -232,6 +233,7 @@ const TALK = {
   limit: 360,                 // 持ち時間（秒）。残り時間はこれを基準に出す
   storage: "vtt-prompter-relaxin2026-v1",
   download: "relaxin2026.vtt",
+  audio: "relaxin2026.mp3",   // script_to_vtt.py --tts --audio で VTT と一緒に作った音声
 };
 const $ = id => document.getElementById(id);
 let cues = [], slides = [], nodes = [], heads = [];
@@ -243,13 +245,16 @@ const speech = "speechSynthesis" in window ? window.speechSynthesis : null;
 let spokenIndex = -2, savedVoice = "";
 // 原稿を手で変えたか。変えていなければ、起動時に配信中の最新の原稿を読み込む
 let edited = false, published = "";
+// 録音済み音声：本文が配信中の原稿と同じときは、音声の再生位置を時計にする
+const audio = new Audio();
+let audioReady = false, useAudio = false, segmentEnd = null;
 
 function saved() {
   try { return JSON.parse(localStorage.getItem(TALK.storage) || "{}") || {}; }
   catch { return {}; }
 }
 function save() {
-  edited = edited && $("source").value !== published;
+  edited = edited && !matchesPublished($("source").value);
   try {
     localStorage.setItem(TALK.storage, JSON.stringify({
       source: $("source").value, font: $("font").value,
@@ -337,6 +342,17 @@ function parseVtt(text) {
 }
 
 // ---- 表示 ----
+function cueTexts(text) {
+  try { return parseVtt(text).cues.map(cue => cue.text).join("\n"); }
+  catch { return null; }
+}
+function matchesPublished(text) {
+  // 時刻だけ違っても、本文が同じなら配信中の原稿（音声に合わせた時刻）とみなす
+  if (!published) return false;
+  if (text === published) return true;
+  const own = cueTexts(text);
+  return own !== null && own === cueTexts(published);
+}
 function visibleIndex() {
   // 終了時には最後の行も読み終えたものとして表示する。
   if ($("blind").checked) {
@@ -429,7 +445,7 @@ function renderTime(force = false) {
   }
   renderSlide();
   renderBar();
-  if (playing && $("tts").checked && active >= 0 && active !== spokenIndex) {
+  if (!useAudio && playing && $("tts").checked && active >= 0 && active !== spokenIndex) {
     spokenIndex = active;
     speakText(cues[active].text);
   }
@@ -487,12 +503,29 @@ function releaseWake() {
   if (lock) lock.release().catch(() => {});
 }
 function syncTime(now = performance.now()) {
-  if (playing) elapsed = Math.min(duration, elapsed + (now - lastTick) / 1000 * playbackSpeed);
+  if (playing) {
+    if (useAudio && !audio.paused && !audio.ended) {
+      elapsed = Math.min(duration, audio.currentTime);
+    } else {
+      elapsed = Math.min(duration, elapsed + (now - lastTick) / 1000 * playbackSpeed);
+    }
+  }
   lastTick = now;
+}
+function playAudioFrom(time) {
+  segmentEnd = null;
+  audio.muted = !$("tts").checked;
+  audio.playbackRate = playbackSpeed;
+  audio.currentTime = time;
+  if (!audio.duration || time < audio.duration) {
+    audio.play().catch(() => message("音声を再生できませんでした。"));
+  }
 }
 function pause(silence = true) {
   syncTime();
   if (silence) stopSpeech();
+  audio.pause();
+  segmentEnd = null;
   playing = false;
   document.querySelector(".app").classList.remove("playing");
   cancelAnimationFrame(raf);
@@ -517,6 +550,7 @@ function start() {
   playing = true;
   document.querySelector(".app").classList.add("playing");
   lastTick = performance.now();
+  if (useAudio) playAudioFrom(elapsed);
   $("play").textContent = "❚❚ 一時停止";
   message($("blind").checked
     ? "暗記練習中。現在の行は非表示です。"
@@ -529,7 +563,19 @@ function jump(time) {
   if (playing) stopSpeech();
   elapsed = Math.max(0, Math.min(duration, time));
   lastTick = performance.now();
+  if (useAudio) {
+    if (playing) playAudioFrom(elapsed);
+    else { audio.pause(); segmentEnd = null; audio.currentTime = elapsed; }
+  }
   renderTime(true);
+}
+function playSegment(index) {
+  // 停止中に 1 行だけ録音音声で聞く
+  audio.muted = false;
+  audio.playbackRate = playbackSpeed;
+  audio.currentTime = cues[index].start;
+  segmentEnd = cues[index].end;
+  audio.play().catch(() => {});
 }
 function jumpSlide(step) {
   syncTime();
@@ -543,6 +589,11 @@ function jumpSlide(step) {
 }
 
 function apply(text, persist = true) {
+  // 本文が配信中の原稿と同じなら、時刻は音声に合わせた配信中のものを使う
+  if (text !== published && matchesPublished(text)) {
+    text = published;
+    $("source").value = text;
+  }
   let parsed;
   try { parsed = parseVtt(text); }
   catch (error) { message(`原稿を読めませんでした：${error.message}`); return false; }
@@ -605,10 +656,13 @@ function apply(text, persist = true) {
     return head;
   });
   if (persist) save();
+  useAudio = audioReady && matchesPublished(text);
   renderTime(true);
   const chars = cues.reduce((sum, cue) => sum + cue.text.length, 0);
   message(`${slides.length}枚・${cues.length}行・${chars}字・最後の行の終わり ${formatTenth(lastEnd)}` +
     `（持ち時間 ${format(TALK.limit)}）。` +
+    (useAudio ? "読み上げは録音音声（Gemini TTS）です。" :
+      audioReady ? "原稿が配信中のものと違うため、読み上げは端末の声です。" : "") +
     (storageAvailable ? "原稿はこのブラウザに保存されます。" : "自動保存できません。VTTを保存してください。"));
   return true;
 }
@@ -632,18 +686,30 @@ $("seek").addEventListener("input", () => jump(Number($("seek").value)));
 $("speed").addEventListener("change", () => {
   syncTime();
   playbackSpeed = Number($("speed").value);
+  audio.playbackRate = playbackSpeed;
   save(); renderTime();
 });
 $("tts").addEventListener("change", () => {
-  if ($("tts").checked) { spokenIndex = -2; renderTime(); }
+  if (useAudio) audio.muted = !$("tts").checked;
+  else if ($("tts").checked) { spokenIndex = -2; renderTime(); }
   else stopSpeech();
   save();
-  message($("tts").checked ? "端末の読み上げON" : "読み上げOFF（画面だけ進みます）");
+  message(!$("tts").checked ? "読み上げOFF（画面だけ進みます）" :
+    useAudio ? "録音音声（Gemini TTS）で読み上げます" : "端末の読み上げON");
 });
 $("speakNow").addEventListener("click", () => {
   // 暗記モードで詰まったときのヒントにも使える
   const index = Math.max(0, Math.min(active, cues.length - 1));
-  if (cues[index]) speakText(cues[index].text);
+  if (!cues[index]) return;
+  if (!useAudio) speakText(cues[index].text);
+  else if (!playing) playSegment(index);
+  else if (!$("tts").checked) speakText(cues[index].text);
+});
+audio.addEventListener("timeupdate", () => {
+  if (!playing && segmentEnd !== null && audio.currentTime >= segmentEnd) {
+    audio.pause();
+    segmentEnd = null;
+  }
 });
 $("voice").addEventListener("change", () => {
   savedVoice = $("voice").value;
@@ -758,7 +824,7 @@ $("blind").checked = !!state.blind;
 $("light").checked = !!state.light;
 $("awake").checked = state.awake !== false;
 setTheme();
-$("tts").checked = !!speech && state.sound === true;
+$("tts").checked = state.sound === true;
 savedVoice = typeof state.voice === "string" ? state.voice : "";
 edited = state.edited === true;
 if (speech) {
@@ -782,6 +848,19 @@ async function init() {
     $("source").value = published;
   }
   if (!apply($("source").value, false)) $("editorDetails").open = true;
+  if (!published) return;
+  try {
+    // Blob にしておくと、シークやオフライン再生が Range リクエストに左右されない
+    const response = await fetch(TALK.audio);
+    if (!response.ok) throw new Error(response.status);
+    audio.src = URL.createObjectURL(await response.blob());
+    audio.preload = "auto";
+    audioReady = true;
+    document.querySelectorAll(".sound").forEach(el => { el.hidden = false; });
+    if (!playing) apply($("source").value, false);
+  } catch {
+    if (speech) message("録音音声を読み込めませんでした。読み上げは端末の声です。");
+  }
 }
 init();
 acquireWake();

@@ -12,6 +12,7 @@ const urlsToCache = [
   '/android_app/prompter/joa2026/audio.mp3',
   '/android_app/prompter/relaxin2026/',
   '/android_app/prompter/relaxin2026/relaxin2026.vtt',
+  '/android_app/prompter/relaxin2026/relaxin2026.mp3',
   '/android_app/manifest_home.json',
   '/android_app/manifest_msc.json',
   '/android_app/manifest_ihc.json',

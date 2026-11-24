@@ -2,7 +2,7 @@
 
 > 2026同門会relaxin v24 の発表者ノートを 6 分に縮めた読み原稿（v23 からの変更はスライド 3 の大腿骨頭靱帯の 2 文）。
 > 1 行 = 1 キュー。「。」で終わらない行は次の行に文が続く。
-> 作り直し（Gemini TTS の読み上げに合わせる）: python tools/script_to_vtt.py tools/scripts/relaxin2026.md --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 355 --tts
+> 作り直し（Gemini TTS の読み上げに合わせる）: python tools/script_to_vtt.py tools/scripts/relaxin2026.md --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 355 --tts --audio frontend/public/prompter/relaxin2026/relaxin2026.mp3
 
 ## 1. タイトル
 マウス股関節におけるリラキシン受容体 RXFP1 の発現について発表します。
