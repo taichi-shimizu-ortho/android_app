@@ -4,13 +4,17 @@ Gemini TTS は時刻情報を返さないので、文（「。」まで）ごと
 文の開始時刻は実測、文中の行の開始時刻は文字数の比で割り振る。
 最後に ffmpeg の atempo（音程を保ったまま速度変更）で全体を --duration 秒に合わせる。
 
-    export GEMINI_API_KEY=...   # Google AI Studio のキー。リポジトリに書かない
-    python tools/lrc_tts.py frontend/public/prompter/joa2026/joa2026.lrc --voice Charon --duration 180
+    op run --env-file=tools/tts.env -- python tools/lrc_tts.py \
+        frontend/public/prompter/joa2026/joa2026.lrc --voice Charon --duration 180
+
+キー（GEMINI_API_KEY）は 1Password にあり、tools/tts.env にはその参照（op://…）だけを書いてある。
+op run が実行のあいだだけキーを渡す。
 
 出力（LRC と同じフォルダ）:
     audio.mp3   全文の音声
     <入力>.lrc  時刻を書き直した LRC（上書き）
-合成済みの文は tools/.tts_cache/ に保存し、同じ文・声・スタイルなら API を呼ばない。
+合成済みの文はキャッシュ（既定は tools/.tts_cache/、--cache-dir で変更）に保存し、
+同じ文・声・スタイルなら API を呼ばない。--cache-dir は ~ から書けば Mac と Windows で同じ指定が使える。
 """
 
 import argparse
@@ -30,7 +34,7 @@ from pathlib import Path
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions"
 SAMPLE_RATE = 24000  # audio/l16: 24 kHz, mono, 16-bit little-endian
-CACHE_DIR = Path(__file__).parent / ".tts_cache"
+CACHE_DIR = Path(__file__).parent / ".tts_cache"  # set_cache_dir で変える
 DEFAULT_STYLE = "学会での口頭発表。落ち着いて、はっきりと、やや速めのテンポで読む。"
 
 # 読み間違える語の読み替え（表記 → 読み）。合成に渡す文だけを置き換え、LRC の表示は変えない。
@@ -60,6 +64,12 @@ def group_sentences(lines: list[str]) -> list[list[int]]:
     if current:
         groups.append(current)
     return groups
+
+
+def set_cache_dir(path: str | Path) -> None:
+    """キャッシュの置き場所を変える。~ はホームに展開する（Mac と Windows で同じ指定を使うため）。"""
+    global CACHE_DIR
+    CACHE_DIR = Path(path).expanduser()
 
 
 def cache_path(text: str, voice: str, style: str, model: str) -> Path:
@@ -112,7 +122,7 @@ def synthesize(text: str, voice: str, style: str, model: str, key: str) -> bytes
     if not audio:
         sys.exit(f"音声が返ってきませんでした: {json.dumps(result, ensure_ascii=False)[:500]}")
     pcm = base64.b64decode(audio[-1]["data"])
-    CACHE_DIR.mkdir(exist_ok=True)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cached.write_bytes(pcm)
     return pcm
 
@@ -141,7 +151,10 @@ def main() -> None:
     parser.add_argument("--duration", type=float, default=180.0, help="全体の長さ（秒）")
     parser.add_argument("--tail", type=float, default=1.0, help="読み終わりから終了までの余白（秒）")
     parser.add_argument("--gap", type=float, default=0.45, help="文と文の間（秒）")
+    parser.add_argument("--cache-dir", help="合成済みの文のキャッシュ（既定 tools/.tts_cache）")
     args = parser.parse_args()
+    if args.cache_dir:
+        set_cache_dir(args.cache_dir)
 
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_TTS_API_KEY")
     if not key:

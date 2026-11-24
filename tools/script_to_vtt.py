@@ -2,11 +2,17 @@
 
 時刻は、読む速さから割り当てるか、--tts で Gemini TTS（Google）に読ませた長さに合わせる。
 
-    python tools/script_to_vtt.py tools/scripts/relaxin2026.md \
-        --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 355 --tts
+    op run --env-file=tools/tts.env -- python tools/script_to_vtt.py tools/scripts/relaxin2026.md \
+        --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 355 --tts \
+        --cache-dir "~/OneDrive/Desktop/relaxin expression/2026同門会relaxin/tts_cache"
 
---tts には環境変数 GEMINI_API_KEY（Google AI Studio のキー。リポジトリに書かない）と ffmpeg が要る。
-合成は tools/lrc_tts.py と同じ仕組みで、合成済みの文は tools/.tts_cache/ に残る（同じ文・声なら API を呼ばない）。
+（発表ごとの実際のコマンドは、原稿 .md の冒頭に書いてある）
+
+--tts には GEMINI_API_KEY と ffmpeg が要る。キーは 1Password にあり、tools/tts.env にはその参照（op://…）
+だけを書いてある。op run が実行のあいだだけキーを渡すので、どの端末でも 1Password CLI があれば同じコマンドで動く。
+合成は tools/lrc_tts.py と同じ仕組みで、合成済みの文は --cache-dir（既定 tools/.tts_cache/）に残り、
+同じ文・声なら API を呼ばない。キャッシュを OneDrive に置けば、Mac と Windows のどちらでも合成済みの文を使い回せる
+（~ はホームに展開する）。
 
 原稿の書き方（例は tools/scripts/relaxin2026.md）:
 
@@ -267,8 +273,9 @@ def stamp(ms: int) -> str:
 
 
 def short(ms: int) -> str:
-    m, rest = divmod(ms, 60_000)
-    return f"{m}:{rest / 1000:04.1f}"
+    # 先に 0.1 秒単位に丸める（239.97 秒を「3:60.0」でなく「4:00.0」にする）
+    m, tenths = divmod(round(ms / 100), 600)
+    return f"{m}:{tenths / 10:04.1f}"
 
 
 def to_vtt(cues: list[Cue]) -> str:
@@ -363,15 +370,18 @@ def main() -> int:
     parser.add_argument("--cache-only", action="store_true",
                         help="--tts のとき API を呼ばない。未合成の文は平均の速さで見積もり、音声は無音にする"
                              "（API の上限に達したときの仮の版）")
+    parser.add_argument("--cache-dir", help="--tts の合成済みの文のキャッシュ（既定 tools/.tts_cache）。~ から書ける")
     args = parser.parse_args()
-    if args.cache_only and not args.tts:
-        raise SystemExit("--cache-only は --tts と一緒に使う")
+    if (args.cache_only or args.cache_dir) and not args.tts:
+        raise SystemExit("--cache-only と --cache-dir は --tts と一緒に使う")
 
     title, slides = parse_script(args.script.read_text(encoding="utf-8"))
     cues = make_cues(slides)
     gaps = make_gaps(cues, args.sentence_pause, args.slide_pause)
     if args.tts:
         import lrc_tts
+        if args.cache_dir:
+            lrc_tts.set_cache_dir(args.cache_dir)
         key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_TTS_API_KEY") or ""
         if not key and not args.cache_only:
             raise SystemExit("環境変数 GEMINI_API_KEY（または GOOGLE_TTS_API_KEY）が設定されていない")

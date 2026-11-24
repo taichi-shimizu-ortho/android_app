@@ -2,7 +2,9 @@
 
 > 2026同門会relaxin v26 の発表者ノートを 6 分に縮めた読み原稿（v24 からの変更は、スライド 3 の「仮説」、14 の恥骨結合の文、15 の FAI のモデル動物）。
 > 1 行 = 1 キュー。「。」で終わらない行は次の行に文が続く。
-> 作り直し（Gemini TTS の読み上げに合わせる）: python tools/script_to_vtt.py tools/scripts/relaxin2026.md --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 355 --tts --audio frontend/public/prompter/relaxin2026/relaxin2026.mp3
+> スライド 4 の「ヒトの検体は手術で得た病変組織に限られ、」は読まない。
+> 作り直し（Gemini TTS の読み上げに合わせる）: op run --env-file=tools/tts.env -- python tools/script_to_vtt.py tools/scripts/relaxin2026.md --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 355 --tts --audio frontend/public/prompter/relaxin2026/relaxin2026.mp3 --cache-dir "~/OneDrive/Desktop/relaxin expression/2026同門会relaxin/tts_cache"
+> 作り直したら、frontend/public/prompter/relaxin2026/ の relaxin2026.vtt・.md・.mp3 を docs/prompter/relaxin2026/ にもコピーする。
 
 ## 1. タイトル
 マウス股関節におけるリラキシン受容体 RXFP1 の発現について発表します。
