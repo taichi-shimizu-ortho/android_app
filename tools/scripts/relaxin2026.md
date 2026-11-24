@@ -1,8 +1,8 @@
 # 2026 同門会 マウス股関節におけるリラキシン受容体 RXFP1 の発現（6 分）
 
-> 2026同門会relaxin v23（v22edited と同じノート）の発表者ノートを 6 分に縮めた読み原稿。
+> 2026同門会relaxin v24 の発表者ノートを 6 分に縮めた読み原稿（v23 からの変更はスライド 3 の大腿骨頭靱帯の 2 文）。
 > 1 行 = 1 キュー。「。」で終わらない行は次の行に文が続く。
-> 作り直し: python tools/script_to_vtt.py tools/scripts/relaxin2026.md --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 350
+> 作り直し（Gemini TTS の読み上げに合わせる）: python tools/script_to_vtt.py tools/scripts/relaxin2026.md --out-dir frontend/public/prompter/relaxin2026 --name relaxin2026 --end 355 --tts
 
 ## 1. タイトル
 マウス股関節におけるリラキシン受容体 RXFP1 の発現について発表します。
@@ -22,6 +22,9 @@
 RXFP1 に結合し、基質が変化する可能性を考えました。
 MMP の誘導やコラーゲン量の減少は、顎関節での報告です。
 図は右の股関節を前から見たものです。
+大腿骨頭靱帯では、ヒトの発育性股関節形成不全の乳児で、
+RXFP1 の発現が報告されています。
+本研究では、マウスの関節包と関節軟骨を調べました。
 
 ## 4. Introduction（目的と仮説）
 ただ、ヒトの検体は手術で得た病変組織に限られ、
