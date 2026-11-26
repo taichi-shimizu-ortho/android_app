@@ -126,6 +126,25 @@
   #status { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
   #status:empty { display: none; }
   #reader.mirror .line, #reader.mirror .slide-head, #reader.mirror #blindHint { transform: scaleX(-1); }
+
+  /* スライド表示：原稿の進行（スライド番号）に合わせて画像を切り替える */
+  .stage { flex: 1; min-height: 0; display: flex; }
+  .stage .reader-wrap { flex: 1; min-width: 0; }
+  .slidepane {
+    flex: none; width: min(46vw, 640px); padding: 10px; background: var(--panel);
+    display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--rule);
+  }
+  .slidepane img { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #fff; border-radius: 6px; display: block; }
+  .slidepane .next { opacity: .75; }
+  .slidepane .cap { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .slidepane.off { display: none; }
+  @media (max-width: 799px) {
+    .stage { flex-direction: column; }
+    .slidepane { width: 100%; flex-direction: row; border-right: 0; border-bottom: 1px solid var(--rule); padding: 6px; }
+    .slidepane > div { flex: 1; min-width: 0; }
+    .slidepane .next { display: none; }
+    .slidepane > div:first-child { flex: 1; max-width: 55vh; margin: 0 auto; }
+  }
   [hidden] { display: none !important; }
 
   /* 暗記モードでは原稿を隠し、今のスライドの番号と見出しだけをヒントに出す */
@@ -183,6 +202,7 @@
       <span id="left" class="left"></span>
       <label class="toggle"><input id="light" type="checkbox"> ☀ 明るい表示</label>
       <label class="toggle"><input id="blind" type="checkbox"> 暗記モード</label>
+      <label class="toggle"><input id="showSlides" type="checkbox" checked> 🖼 スライド</label>
       <label class="toggle tts-only sound"><input id="tts" type="checkbox"> 🔊 読み上げ</label>
       <button id="speakNow" class="tts-only sound">🔊 今の行</button>
     </div>
@@ -223,12 +243,24 @@
     <div id="modeHint" class="hint"></div>
     <p id="status" role="status"></p>
   </header>
-  <section class="reader-wrap" aria-label="読み上げ原稿">
-    <div id="reader"></div>
-  </section>
+  <div class="stage">
+    <aside id="slidepane" class="slidepane" aria-label="スライド">
+      <div><div class="cap">いまのスライド</div><img id="slideImg" alt="現在のスライド"></div>
+      <div class="next"><div class="cap">次のスライド</div><img id="slideNextImg" alt="次のスライド"></div>
+    </aside>
+    <section class="reader-wrap" aria-label="読み上げ原稿">
+      <div id="reader"></div>
+    </section>
+  </div>
 </main>
 <script>
 "use strict";
+document.addEventListener("DOMContentLoaded", () => {
+  const t = document.getElementById("showSlides"), pane = document.getElementById("slidepane");
+  t.checked = localStorage.getItem("rx-show-slides") !== "0";
+  const apply = () => { pane.classList.toggle("off", !t.checked); localStorage.setItem("rx-show-slides", t.checked ? "1" : "0"); };
+  t.addEventListener("change", apply); apply();
+});
 // 発表ごとに変えるのはここだけ。原稿は tools/scripts/<名前>.md から tools/script_to_vtt.py で作る。
 const TALK = {
   title: "2026 同門会 RXFP1",
@@ -404,6 +436,13 @@ function currentIndex() {
   }
   return index;
 }
+const slideSrc = n => `slides/s${String(n).padStart(2, "0")}.jpg`;
+function showSlideImages(now, next) {
+  const a = $("slideImg"), b = $("slideNextImg");
+  if (a.dataset.n !== String(now)) { a.dataset.n = now; a.src = slideSrc(now); }
+  b.parentElement.style.visibility = next ? "visible" : "hidden";
+  if (next && b.dataset.n !== String(next)) { b.dataset.n = next; b.src = slideSrc(next); }
+}
 function renderSlide() {
   const cue = cues[Math.max(active, 0)];
   const slide = cue ? cue.slide : null;
@@ -414,6 +453,7 @@ function renderSlide() {
   const lastOfSlide = active >= 0 && slide.cues[slide.cues.length - 1] === cue;
   $("slideNext").hidden = !(next && lastOfSlide && elapsed < duration);
   if (next) $("slideNext").textContent = `次 → ${next.number}${next.title ? " " + next.title : ""}`;
+  showSlideImages(slide.number, next ? next.number : null);
   if (index === shownSlide) return;
   shownSlide = index;
   const num = document.createElement("span");
