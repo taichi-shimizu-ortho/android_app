@@ -126,6 +126,12 @@
   #status { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
   #status:empty { display: none; }
   @media (max-width: 799px) { #status.faded { display: none; } }
+  /* スマホ（縦）や横向きの低い画面では、再生中は再生・速度・時計だけを残し、スライドと原稿を広げる */
+  @media (max-width: 799px), (max-height: 500px) {
+    .app.playing .controls .toggle, .app.playing #speakNow,
+    .app.playing .timeline, .app.playing .slidebar, .app.playing #editorDetails,
+    .app.playing #modeHint, .app.playing #status, .app.playing .slidepane .cap { display: none; }
+  }
   #reader.mirror .line, #reader.mirror .slide-head, #reader.mirror #blindHint { transform: scaleX(-1); }
 
   /* スライド表示：原稿の進行（スライド番号）に合わせて画像を切り替える */
@@ -142,6 +148,11 @@
   .slidepane .next { opacity: .75; }
   .slidepane .cap { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
   .slidepane.off { display: none; }
+  /* 横向きのスマホ（低い画面）では、今のスライド 1 枚だけを高さいっぱいに出す */
+  @media (min-width: 800px) and (max-height: 500px) {
+    .slidepane { width: min(46vw, calc((100cqh - 45px) * 16 / 9)); overflow: hidden; }
+    .slidepane .next { display: none; }
+  }
   @media (max-width: 799px) {
     .stage { flex-direction: column; }
     .slidepane { width: 100%; flex-direction: row; border-right: 0; border-bottom: 1px solid var(--rule); padding: 6px; }
@@ -884,6 +895,8 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) acquireWake();
 });
 window.addEventListener("resize", () => centerLine(false));
+// 再生・停止でヘッダーの高さが変わると原稿の枠も変わるので、今の行を真ん中に戻す
+new ResizeObserver(() => centerLine(false)).observe($("reader"));
 $("editorDetails").addEventListener("toggle", () => {
   requestAnimationFrame(() => centerLine(false));
 });
