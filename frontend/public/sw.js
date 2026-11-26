@@ -1,4 +1,4 @@
-const CACHE_NAME = 'app-v14';
+const CACHE_NAME = 'app-v15';
 const urlsToCache = [
   '/android_app/',
   '/android_app/index.html',
@@ -13,6 +13,22 @@ const urlsToCache = [
   '/android_app/prompter/relaxin2026/',
   '/android_app/prompter/relaxin2026/relaxin2026.vtt',
   '/android_app/prompter/relaxin2026/relaxin2026.mp3',
+  '/android_app/prompter/relaxin2026/slides/s01.jpg',
+  '/android_app/prompter/relaxin2026/slides/s02.jpg',
+  '/android_app/prompter/relaxin2026/slides/s03.jpg',
+  '/android_app/prompter/relaxin2026/slides/s04.jpg',
+  '/android_app/prompter/relaxin2026/slides/s05.jpg',
+  '/android_app/prompter/relaxin2026/slides/s06.jpg',
+  '/android_app/prompter/relaxin2026/slides/s07.jpg',
+  '/android_app/prompter/relaxin2026/slides/s08.jpg',
+  '/android_app/prompter/relaxin2026/slides/s09.jpg',
+  '/android_app/prompter/relaxin2026/slides/s10.jpg',
+  '/android_app/prompter/relaxin2026/slides/s11.jpg',
+  '/android_app/prompter/relaxin2026/slides/s12.jpg',
+  '/android_app/prompter/relaxin2026/slides/s13.jpg',
+  '/android_app/prompter/relaxin2026/slides/s14.jpg',
+  '/android_app/prompter/relaxin2026/slides/s15.jpg',
+  '/android_app/prompter/relaxin2026/slides/s16.jpg',
   '/android_app/manifest_home.json',
   '/android_app/manifest_msc.json',
   '/android_app/manifest_ihc.json',

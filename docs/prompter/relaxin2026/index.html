@@ -257,8 +257,11 @@
 "use strict";
 document.addEventListener("DOMContentLoaded", () => {
   const t = document.getElementById("showSlides"), pane = document.getElementById("slidepane");
-  t.checked = localStorage.getItem("rx-show-slides") !== "0";
-  const apply = () => { pane.classList.toggle("off", !t.checked); localStorage.setItem("rx-show-slides", t.checked ? "1" : "0"); };
+  try { t.checked = localStorage.getItem("rx-show-slides") !== "0"; } catch {}
+  const apply = () => {
+    pane.classList.toggle("off", !t.checked);
+    try { localStorage.setItem("rx-show-slides", t.checked ? "1" : "0"); } catch {}
+  };
   t.addEventListener("change", apply); apply();
 });
 // 発表ごとに変えるのはここだけ。原稿は tools/scripts/<名前>.md から tools/script_to_vtt.py で作る。
