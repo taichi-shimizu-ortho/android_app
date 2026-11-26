@@ -81,10 +81,10 @@
     overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 45%;
   }
 
-  .reader-wrap { position: relative; flex: 1; min-height: 0; }
+  .reader-wrap { position: relative; flex: 1; min-height: 0; container-type: size; }
   #reader {
     height: 100%; overflow-y: auto; overscroll-behavior: contain;
-    padding: 35vh 16px; scrollbar-width: thin;
+    padding: 35vh 16px; padding-block: 35cqh; scrollbar-width: thin;
   }
   .slide-head {
     display: flex; gap: 8px; align-items: baseline;
@@ -125,13 +125,17 @@
   #font { width: 100px; }
   #status { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
   #status:empty { display: none; }
+  @media (max-width: 799px) { #status.faded { display: none; } }
   #reader.mirror .line, #reader.mirror .slide-head, #reader.mirror #blindHint { transform: scaleX(-1); }
 
   /* スライド表示：原稿の進行（スライド番号）に合わせて画像を切り替える */
-  .stage { flex: 1; min-height: 0; display: flex; }
+  .stage { flex: 1; min-height: 0; display: flex; container-type: size; }
   .stage .reader-wrap { flex: 1; min-width: 0; }
+  /* スマホの縦並びでは height: 100% が効かず原稿がはみ出すので、枠いっぱいに固定する */
+  .stage #reader { position: absolute; inset: 0; height: auto; }
   .slidepane {
-    flex: none; width: min(46vw, 640px); padding: 10px; background: var(--panel);
+    /* 今と次の 2 枚（16:9）と見出しが、欄の高さに収まる幅にする */
+    flex: none; width: min(46vw, 640px, calc((100cqh - 70px) * 8 / 9)); padding: 10px; background: var(--panel);
     display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--rule);
   }
   .slidepane img { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #fff; border-radius: 6px; display: block; }
@@ -304,7 +308,23 @@ function save() {
     storageAvailable = true;
   } catch { storageAvailable = false; }
 }
-function message(text) { $("status").textContent = text; }
+// スマホ幅では、使い方の説明は「表示設定」の中へ送り、お知らせは数秒で消して原稿とスライドを広く見せる
+const narrow = matchMedia("(max-width: 799px)");
+function placeHint() {
+  const hint = $("modeHint"), details = $("editorDetails");
+  if (narrow.matches) details.querySelector(".panel").prepend(hint);
+  else details.after(hint);
+}
+narrow.addEventListener("change", placeHint);
+placeHint();
+let statusTimer = 0;
+function message(text) {
+  const status = $("status");
+  status.textContent = text;
+  status.classList.remove("faded");
+  clearTimeout(statusTimer);
+  if (narrow.matches && text) statusTimer = setTimeout(() => status.classList.add("faded"), 5000);
+}
 function format(sec) {
   const sign = sec < 0 ? "−" : "";
   sec = Math.floor(Math.abs(sec));
