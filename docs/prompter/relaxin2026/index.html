@@ -154,6 +154,24 @@
   .slidepane .next { opacity: .75; }
   .slidepane .cap { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
   .slidepane.off { display: none; }
+  /* 今読んでいる行がスライドのどこかを枠で囲む（座標はスライドに対する %） */
+  .slidebox { position: relative; }
+  #slideMarks { position: absolute; inset: 0; pointer-events: none; }
+  #slideMarks.off { display: none; }
+  #slideMarks .mark {
+    position: absolute; border: clamp(1.5px, .3vw, 3px) solid #ef4444; border-radius: 5px;
+    background: rgba(250, 204, 21, .14);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .7), 0 0 14px rgba(239, 68, 68, .55);
+    animation: markIn .25s ease-out;
+  }
+  @keyframes markIn { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+  /* スライドに書いていない、口頭だけの行は黄色の文字にする */
+  .line.oral { color: #facc15; }
+  .line.oral.past { color: #a68a1c; }
+  .line.oral.active { color: #fde047; }
+  :root[data-theme="light"] .line.oral { color: #b45309; }
+  :root[data-theme="light"] .line.oral.past { color: #d6a96b; }
+  :root[data-theme="light"] .line.oral.active { color: #92400e; }
   /* 横向きのスマホ（低い画面）では、今のスライド 1 枚だけを高さいっぱいに出す */
   @media (min-width: 800px) and (max-height: 500px) {
     .slidepane { width: min(46vw, calc((100cqh - 45px) * 16 / 9)); overflow: hidden; }
@@ -244,6 +262,7 @@
         <div class="settings">
           <label>文字 <input id="font" type="range" min="20" max="60" value="30" aria-label="文字サイズ"> <span id="fontValue">30</span></label>
           <label><input id="mirror" type="checkbox"> 左右反転</label>
+          <label><input id="showMarks" type="checkbox" checked> スライドの該当部位を囲む</label>
           <label><input id="awake" type="checkbox" checked> 画面を消さない（停止中も）</label>
           <label class="tts-only">読み上げの声 <select id="voice" aria-label="端末読み上げの声"><option value="">自動（日本語）</option></select></label>
           <button id="center">表示行へ</button>
@@ -259,6 +278,7 @@
         <div class="hint">WebVTT（UTF-8）。「NOTE スライド 5: 見出し」の行でスライドを区切ります。
           時刻は tools/script_to_vtt.py で Gemini TTS の読み上げに合わせています。
           配信中の原稿のままなら、🔊 読み上げはその録音音声を流します（原稿を変えると端末の読み上げ）。
+          読んでいる行は、スライドの該当部位を赤い枠で囲みます。スライドに書いていない口頭だけの行は、黄色の文字です。
           スマホでは、上へスワイプすると停止中も設定と説明が上へ隠れ、スライドと原稿が広がります（下へスワイプか「▾ 設定」で戻ります）。
           <a id="scriptLink" href="relaxin2026.md" target="_blank" rel="noopener">スライドごとの読み原稿（.md）</a></div>
       </div>
@@ -268,7 +288,7 @@
   </header>
   <div class="stage">
     <aside id="slidepane" class="slidepane" aria-label="スライド">
-      <div><div class="cap">いまのスライド</div><img id="slideImg" alt="現在のスライド"></div>
+      <div><div class="cap">いまのスライド</div><div class="slidebox"><img id="slideImg" alt="現在のスライド"><div id="slideMarks" aria-hidden="true"></div></div></div>
       <div class="next"><div class="cap">次のスライド</div><img id="slideNextImg" alt="次のスライド"></div>
     </aside>
     <section class="reader-wrap" aria-label="読み上げ原稿">
@@ -296,6 +316,9 @@ const TALK = {
   download: "relaxin2026.vtt",
   audio: "relaxin2026.mp3",   // script_to_vtt.py --tts --audio で VTT と一緒に作った音声
 };
+// 行（キューの識別子）ごとの、スライド上の該当部位。[左, 上, 右, 下]（スライドに対する %）。
+// 2026同門会relaxin v32.pptx の文字の位置と図の範囲から作った。空の配列は口頭だけの行（黄色の文字）
+const SLIDE_MARKS = {"s01-01":[[5.7,28.0,84.5,46.3]],"s01-02":[],"s02-01":[[2.6,22.4,91.1,28.1]],"s02-02":[[4.3,28.0,75.5,33.7]],"s02-03":[[4.3,28.0,75.5,33.7]],"s02-04":[[2.6,46.1,75.0,51.8]],"s02-05":[[4.3,51.7,77.6,57.3]],"s02-06":[[2.6,64.0,85.3,75.2]],"s02-07":[[5.7,84.8,95.1,96.1]],"s03-01":[[14.9,30.4,30.8,36.4],[9.8,45.1,35.9,51.2]],"s03-02":[[9.8,45.1,35.9,51.2],[13.9,59.8,31.8,65.9]],"s03-03":[[8.0,68.2,38.4,78.6]],"s03-04":[[80.2,22.9,94.3,32.3],[47.0,21.0,73.0,70.0]],"s03-05":[[72.5,56.2,89.9,67.1]],"s03-06":[[72.5,62.6,92.2,73.6]],"s03-07":[[5.7,82.4,73.8,88.4]],"s04-01":[[5.7,23.9,83.1,30.6]],"s04-02":[[7.8,43.1,73.1,56.8]],"s04-03":[[7.8,58.4,81.1,65.1]],"s04-04":[[7.4,71.3,71.5,85.2]],"s04-05":[[7.4,78.6,74.6,92.2]],"s05-01":[[5.7,11.2,47.4,17.6]],"s05-02":[[5.7,20.8,62.0,26.1]],"s05-03":[[5.7,20.8,62.0,31.2]],"s05-04":[[5.7,33.7,50.0,44.1]],"s05-05":[[71.6,68.3,91.2,72.9],[68.8,24.1,93.3,67.7]],"s05-06":[[5.7,59.2,61.7,69.7],[5.7,72.3,42.8,82.9]],"s05-07":[[5.7,84.9,95.1,95.7]],"s06-01":[[7.4,20.9,84.4,33.0]],"s06-02":[[7.4,35.7,93.6,48.3]],"s06-03":[[7.4,50.6,66.3,56.8]],"s06-04":[[7.4,59.2,95.3,71.6]],"s07-01":[[0,56.9,28.3,61.9],[41.0,7.0,100,53.0]],"s07-02":[[1.6,61.7,24.2,66.1],[41.0,53.0,100,99.0]],"s07-03":[[0,30.7,31.0,42.7]],"s07-04":[[1.2,83.4,36.8,95.0]],"s08-01":[[0.6,23.6,18.8,39.3]],"s08-02":[[0,38.6,24.5,47.2]],"s08-03":[[0,38.6,24.5,47.2],[24.5,75.0,99.0,98.0]],"s08-04":[[0,49.3,24.5,53.9]],"s08-05":[[0,56.0,22.9,60.6],[24.5,9.0,99.0,74.0]],"s09-01":[[0.6,23.6,23.4,39.3]],"s09-02":[[0.6,44.0,22.3,55.1],[41.0,7.0,100,53.0]],"s09-03":[[0.6,54.8,29.8,66.0],[41.0,53.0,100,99.0]],"s09-04":[[0,66.9,30.0,75.1]],"s09-05":[[0,73.9,26.3,80.0]],"s10-01":[],"s10-02":[[62.8,23.4,88.2,32.8],[5.7,82.4,83.7,88.6],[6.7,23.7,61.0,68.5]],"s11-01":[[19.9,11.4,79.6,17.4],[2.8,17.8,49.2,87.4],[50.9,17.8,97.3,87.4]],"s11-02":[[1.8,87.8,71.3,98.4]],"s12-01":[[5.7,11.1,50.5,17.8]],"s12-02":[[50.8,23.7,82.6,35.7]],"s12-03":[[50.8,38.3,94.6,51.0]],"s12-04":[[50.8,53.2,94.8,65.9],[6.7,23.7,47.2,77.0]],"s13-01":[[1.2,19.9,30.6,26.0]],"s13-02":[[0.5,40.0,44.4,49.3],[47.0,0,98.0,34.0]],"s13-03":[[0.6,62.2,24.6,67.1],[47.0,61.0,98.0,77.0]],"s13-04":[[0.6,57.8,42.6,62.7],[47.0,36.0,98.0,62.0]],"s14-02":[[3.8,23.8,98.7,34.7]],"s14-03":[],"s14-04":[[3.8,38.3,40.1,44.3]],"s14-05":[[3.8,44.4,93.4,50.6]],"s14-06":[[3.8,44.4,93.4,50.6]],"s14-07":[[3.1,79.4,82.3,85.6]],"s15-01":[[5.7,11.3,23.6,17.6]],"s15-02":[[7.4,23.8,86.8,35.9]],"s15-03":[[7.4,30.6,86.8,40.8]],"s15-04":[],"s15-05":[],"s15-06":[[7.4,44.9,77.7,50.9]],"s15-07":[[7.4,61.0,63.5,67.0]],"s15-08":[[7.4,67.8,45.9,73.1]],"s16-01":[[5.7,11.3,24.4,17.6]],"s16-02":[[5.8,27.9,94.7,34.7]],"s16-03":[[5.8,40.8,68.2,47.4]],"s16-04":[[5.8,53.2,92.7,67.4]],"s16-05":[]};
 const $ = id => document.getElementById(id);
 let cues = [], slides = [], nodes = [], heads = [];
 let duration = TALK.limit, elapsed = 0;
@@ -319,7 +342,7 @@ function save() {
   try {
     localStorage.setItem(TALK.storage, JSON.stringify({
       source: $("source").value, font: $("font").value,
-      mirror: $("mirror").checked, speed: $("speed").value,
+      mirror: $("mirror").checked, showMarks: $("showMarks").checked, speed: $("speed").value,
       blind: $("blind").checked, sound: $("tts").checked,
       light: $("light").checked, awake: $("awake").checked,
       voice: $("voice").value || savedVoice, edited
@@ -485,6 +508,27 @@ function showSlideImages(now, next) {
   b.parentElement.style.visibility = next ? "visible" : "hidden";
   if (next && b.dataset.n !== String(next)) { b.dataset.n = next; b.src = slideSrc(next); }
 }
+// 識別子 sNN-MM のスライド番号が今のスライドと合うときだけ使う（原稿を手で変えても枠がずれないように）
+function marksFor(cue) {
+  const m = cue && cue.id && cue.id.match(/^s(\d+)-/);
+  if (!m || Number(m[1]) !== cue.slide.number) return null;
+  return SLIDE_MARKS[cue.id] || null;
+}
+let markedKey = "";
+function renderMarks(cue) {
+  const box = $("slideMarks");
+  box.classList.toggle("off", !$("showMarks").checked);
+  const list = marksFor(cue) || [];
+  const key = cue ? cue.id + ":" + list.length : "";
+  if (key === markedKey) return;
+  markedKey = key;
+  box.replaceChildren(...list.map(([x0, y0, x1, y1]) => {
+    const mark = document.createElement("div");
+    mark.className = "mark";
+    Object.assign(mark.style, { left: x0 + "%", top: y0 + "%", width: (x1 - x0) + "%", height: (y1 - y0) + "%" });
+    return mark;
+  }));
+}
 function renderSlide() {
   const cue = cues[Math.max(active, 0)];
   const slide = cue ? cue.slide : null;
@@ -496,6 +540,7 @@ function renderSlide() {
   $("slideNext").hidden = !(next && lastOfSlide && elapsed < duration);
   if (next) $("slideNext").textContent = `次 → ${next.number}${next.title ? " " + next.title : ""}`;
   showSlideImages(slide.number, next ? next.number : null);
+  renderMarks(active >= 0 && elapsed < duration ? cue : null);
   if (index === shownSlide) return;
   shownSlide = index;
   const num = document.createElement("span");
@@ -732,6 +777,11 @@ function apply(text, persist = true) {
       const index = nodes.length;
       const node = document.createElement("div");
       node.className = "line";
+      const marks = marksFor(cue);
+      if (marks && !marks.length) {
+        node.classList.add("oral");
+        node.title = "スライドにない、口頭だけの行";
+      }
       const stamp = document.createElement("span");
       stamp.className = "stamp";
       const body = document.createElement("span");
@@ -835,6 +885,10 @@ $("awake").addEventListener("change", () => {
 });
 // 起動直後は許可されないことがあるので、最初に触ったときにも画面を消さない設定をかけ直す
 document.addEventListener("pointerdown", () => acquireWake(), { passive: true });
+$("showMarks").addEventListener("change", () => {
+  $("slideMarks").classList.toggle("off", !$("showMarks").checked);
+  save();
+});
 $("mirror").addEventListener("change", () => {
   $("reader").classList.toggle("mirror", $("mirror").checked);
   save();
@@ -970,6 +1024,7 @@ if ([...$("speed").options].some(option => option.value === state.speed)) {
 }
 playbackSpeed = Number($("speed").value);
 $("mirror").checked = !!state.mirror;
+$("showMarks").checked = state.showMarks !== false;
 $("blind").checked = !!state.blind;
 $("light").checked = !!state.light;
 $("awake").checked = state.awake !== false;
