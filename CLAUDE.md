@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a multi-app Progressive Web App (PWA) project hosting three independent apps deployed via GitHub Pages:
+This is a multi-app Progressive Web App (PWA) project hosting the lab apps deployed via GitHub Pages:
 
 - **Timer**: IHC double staining protocol timer with section-based countdown and automatic progression
-- **Prompter**: Presentation timer for managing section durations with progress tracking
+- **ISHpalette Timer**: Timer for ISHpalette
 - **Protocol**: Cell culture protocol guide with cell counting/density features, Supabase integration, and Google Forms data submission
 
 All apps are fully offline-capable via Service Workers and installable as PWA home screen apps on iOS/Android.
@@ -15,71 +15,28 @@ All apps are fully offline-capable via Service Workers and installable as PWA ho
 ## Repository Structure
 
 ```
-docs/                          # GitHub Pages deployment root (public_html)
-├── index.html                 # App portal/menu
-├── timer/
-│   ├── index.html             # Timer app UI
-│   ├── sw.js                  # Service Worker
-│   ├── manifest.json          # PWA metadata
-│   └── icons/
-├── prompter/
-│   ├── index.html             # Prompter app UI
-│   ├── sw.js                  # Service Worker
-│   ├── manifest.json          # PWA metadata
-│   └── icons/
-└── protocol/
-    ├── index.html             # Protocol app UI
-    ├── main.js                # Protocol-specific JavaScript (cell counting, API integration)
-    ├── sw.js                  # Service Worker
-    ├── manifest.json          # PWA metadata
-    └── icons/
-shared/
-├── icons/                     # Shared PWA icons (icon-192.png, icon-512.png)
-gen_icons_prompter.py          # Script to generate prompter app icons
-gen_icons_protocol.py          # Script to generate protocol app icons
+frontend/                      # React source and Vite config
+├── src/pages/                 # Home, timers, protocol, and data logs
+└── public/                    # Shared service worker, manifests, and icons
+docs/                          # Generated GitHub Pages deployment root
+├── index.html
+├── home/
+├── ihc/
+├── ish/
+└── msc/
 ```
 
 ## Development Commands
 
-### Generating App Icons
-Both Timer and Protocol apps use Python scripts to generate their PWA icons (must have PIL installed):
-
-```bash
-python gen_icons_prompter.py    # Generates prompter icons (icon-192.png, icon-512.png)
-python gen_icons_protocol.py    # Generates protocol icons
-```
-
-Icons are generated with branded text overlays and saved to `shared/icons/` and app-specific `icons/` directories. The scripts use Arial font and specific color schemes per app.
-
-### Running Locally
-Each app in `docs/` is a self-contained HTML/CSS/JavaScript PWA. To test locally:
-
-1. Serve the `docs/` directory via HTTP (required for Service Worker support):
-   ```bash
-   # Using Python (cross-platform)
-   python -m http.server 8000 --directory docs
-   
-   # Then visit: http://localhost:8000/
-   ```
-
-2. Use browser DevTools to test offline mode (Application → Service Workers → Offline)
+Run `npm ci`, then `npm run build` in `frontend/` to regenerate `docs/`. Use `npm run preview` to serve the build locally. Open `/android_app/` on the preview server and verify offline mode in the browser after the service worker takes control.
 
 ## Architecture & Key Technologies
 
-### Frontend (Vanilla JavaScript)
-All apps use HTML5/CSS3 and Vanilla JavaScript with no build step or frameworks:
-- **Timer & Prompter**: Self-contained timer logic with section management
-- **Protocol**: More complex with cell counting calculations, data persistence, and external API integration
-
-### Service Workers
-Each app includes a `sw.js` Service Worker for:
-- Complete offline functionality
-- Asset caching strategy (cache-first for assets, network-first for HTML)
-- Background sync capability
+The apps share a React bundle and a service worker. Each app has its own directory and PWA manifest.
 
 ### Protocol App: Advanced Features
 
-The Protocol app (`docs/protocol/`) is the most complex and includes:
+The Protocol app (`docs/msc/`) is the most complex and includes:
 
 **Cell Counting & Density**:
 - User inputs cell count in hemocytometer format
@@ -118,7 +75,7 @@ Based on recent commits, the Protocol app is actively developed with:
 ## Important Notes for Editing
 
 ### Before Modifying HTML/JS
-- Changes in `docs/` are directly served as live app code—no build step
+- Edit `frontend/` and regenerate `docs/` before publishing
 - Service Workers must be updated when asset paths change
 - PWA manifest paths must match actual file locations
 - Test offline functionality after any asset changes
@@ -129,17 +86,12 @@ Based on recent commits, the Protocol app is actively developed with:
 - **Density formula**: (counted_value_mean / dish_area_mm²) × 10^5
 - Significant figures: 3 figures for all displays (e.g., 1.23e+05)
 
-### Icon Generation
-- Prompter icons: Orange background (#F77E58) with "2026ORS presentation" text
-- Protocol icons: Generated dynamically per app needs
-- Both stored in `shared/icons/` and copied/linked in app folders
-
 ### GitHub Pages Deployment
 - Repository is public: `taichi-shimizu-ortho/android_app`
 - Deploy: Push changes to `main`, apps live immediately at:
-  - `https://taichi-shimizu-ortho.github.io/android_app/timer/`
-  - `https://taichi-shimizu-ortho.github.io/android_app/prompter/`
-  - `https://taichi-shimizu-ortho.github.io/android_app/protocol/`
+  - `https://taichi-shimizu-ortho.github.io/android_app/ihc/`
+  - `https://taichi-shimizu-ortho.github.io/android_app/ish/`
+  - `https://taichi-shimizu-ortho.github.io/android_app/msc/`
 
 ## Testing Checklist for Key Features
 
@@ -156,7 +108,7 @@ Based on recent commits, the Protocol app is actively developed with:
 - [ ] Google Sheets/Forms submission completes without errors
 - [ ] Unsaved data protection alerts on navigation
 
-### Timer/Prompter
+### Timers
 - [ ] Section timers count down correctly
 - [ ] Auto-advance to next section at zero
 - [ ] Progress bar updates

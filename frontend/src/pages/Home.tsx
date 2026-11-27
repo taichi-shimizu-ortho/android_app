@@ -11,11 +11,6 @@ export default function Home() {
           <div className="app-title">IHC Timer</div>
           <div className="app-desc">二重染色プロトコルタイマー</div>
         </a>
-        <a href="/android_app/prompter/" className="app-card">
-          <div className="app-icon prompter">🎤</div>
-          <div className="app-title">Prompter</div>
-          <div className="app-desc">プレゼンテーション補助</div>
-        </a>
         <a href="/android_app/ish/" className="app-card">
           <div className="app-icon" style={{ color: '#9c27b0' }}>🧬</div>
           <div className="app-title">ISHpalette Timer</div>

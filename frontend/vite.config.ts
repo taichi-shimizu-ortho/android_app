@@ -5,7 +5,7 @@ import { defineConfig, type Plugin } from 'vite'
 
 // 各アプリを別ディレクトリ (/android_app/<app>/) で配信し、Android で別 PWA として
 // 同時インストールできるようにする。中身は同じ SPA なので index.html をコピーするだけ。
-const APPS = ['home', 'msc', 'ihc', 'ish', 'prompter']
+const APPS = ['home', 'msc', 'ihc', 'ish']
 
 function perAppEntries(): Plugin {
   return {

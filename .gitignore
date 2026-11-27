@@ -12,7 +12,8 @@ wheels/
 # Claude Code
 .claude/
 
-# Prompter (now public - published to GitHub Pages)
+# Local archive of the retired Prompter
+/legacy/prompter/
 
 # Secrets / generated TTS cache
 .env

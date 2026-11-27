@@ -3,8 +3,6 @@ import Home from './pages/Home';
 import Protocol from './pages/Protocol';
 import Timer from './pages/Timer';
 import IshPalette from './pages/IshPalette';
-import Prompter from './pages/Prompter';
-import PrompterHome from './pages/PrompterHome';
 import LogsViewer from './pages/LogsViewer';
 
 // index.html が URL のディレクトリ (/android_app/<app>/) から設定するアプリ名
@@ -12,7 +10,6 @@ const APP_START_ROUTES: Record<string, string> = {
   msc: '/protocol',
   ihc: '/timer',
   ish: '/ish-palette',
-  prompter: '/prompter',
 };
 
 function App() {
@@ -26,8 +23,6 @@ function App() {
         <Route path="/protocol" element={<Protocol />} />
         <Route path="/timer" element={<Timer />} />
         <Route path="/ish-palette" element={<IshPalette />} />
-        <Route path="/prompter" element={<PrompterHome />} />
-        <Route path="/prompter/ors2026" element={<Prompter />} />
         <Route path="/logs" element={<LogsViewer />} />
       </Routes>
     </Router>

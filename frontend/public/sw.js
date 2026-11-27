@@ -1,4 +1,4 @@
-const CACHE_NAME = 'app-v15';
+const CACHE_NAME = 'app-v16';
 const urlsToCache = [
   '/android_app/',
   '/android_app/index.html',
@@ -6,39 +6,14 @@ const urlsToCache = [
   '/android_app/msc/',
   '/android_app/ihc/',
   '/android_app/ish/',
-  '/android_app/prompter/',
-  '/android_app/prompter/joa2026/',
-  '/android_app/prompter/joa2026/joa2026.lrc',
-  '/android_app/prompter/joa2026/audio.mp3',
-  '/android_app/prompter/relaxin2026/',
-  '/android_app/prompter/relaxin2026/relaxin2026.vtt',
-  '/android_app/prompter/relaxin2026/relaxin2026.mp3',
-  '/android_app/prompter/relaxin2026/slides/s01.jpg',
-  '/android_app/prompter/relaxin2026/slides/s02.jpg',
-  '/android_app/prompter/relaxin2026/slides/s03.jpg',
-  '/android_app/prompter/relaxin2026/slides/s04.jpg',
-  '/android_app/prompter/relaxin2026/slides/s05.jpg',
-  '/android_app/prompter/relaxin2026/slides/s06.jpg',
-  '/android_app/prompter/relaxin2026/slides/s07.jpg',
-  '/android_app/prompter/relaxin2026/slides/s08.jpg',
-  '/android_app/prompter/relaxin2026/slides/s09.jpg',
-  '/android_app/prompter/relaxin2026/slides/s10.jpg',
-  '/android_app/prompter/relaxin2026/slides/s11.jpg',
-  '/android_app/prompter/relaxin2026/slides/s12.jpg',
-  '/android_app/prompter/relaxin2026/slides/s13.jpg',
-  '/android_app/prompter/relaxin2026/slides/s14.jpg',
-  '/android_app/prompter/relaxin2026/slides/s15.jpg',
-  '/android_app/prompter/relaxin2026/slides/s16.jpg',
   '/android_app/manifest_home.json',
   '/android_app/manifest_msc.json',
   '/android_app/manifest_ihc.json',
   '/android_app/manifest_ish.json',
-  '/android_app/manifest_prompter.json',
   '/android_app/icons/home/icon-192.png',
   '/android_app/icons/msc/icon-192.png',
   '/android_app/icons/ihc/icon-192.png',
   '/android_app/icons/ish/icon-192.png',
-  '/android_app/icons/prompter/icon-192.png'
 ];
 
 self.addEventListener('install', event => {
@@ -72,6 +47,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  const url = new URL(event.request.url);
+  // 廃止した PWA の URL は、旧版のキャッシュやホームへのフォールバックを使わない。
+  if (url.origin === self.location.origin &&
+      /^\/android_app\/(?:prompter(?:\/|$)|icons\/prompter(?:\/|$)|manifest_prompter\.json$)/.test(url.pathname)) {
+    event.respondWith(fetch(new Request(event.request, { cache: 'no-cache' })));
+    return;
+  }
+
   // Network first for Supabase
   if (event.request.url.includes('supabase.co')) {
     event.respondWith(
@@ -82,9 +65,8 @@ self.addEventListener('fetch', event => {
 
   // Network first for everything else (to ensure getting the latest Vite assets),
   // fallback to cache if offline.
-  // HTML や LRC・音声は毎回サーバーに確認する（ブラウザの HTTP キャッシュで古い版が出ないように）。
+  // HTML は毎回サーバーに確認する（ブラウザの HTTP キャッシュで古い版が出ないように）。
   // /assets/ はファイル名にハッシュが付くので HTTP キャッシュのままでよい。
-  const url = new URL(event.request.url);
   const revalidate = url.origin === self.location.origin &&
     !url.pathname.startsWith('/android_app/assets/');
   const request = revalidate ? new Request(event.request, { cache: 'no-cache' }) : event.request;
